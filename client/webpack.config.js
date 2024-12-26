@@ -44,7 +44,7 @@ module.exports = {
 				},
 				{
 					from: "./src/pwa/ss*.webp",
-					to: "pwa/[name]",
+					to: "pwa/[name].webp",
 					force: true
 				},
 			]

@@ -63,6 +63,9 @@ static struct lws_protocols protocols[] = {
 	LWS_PROTOCOL_LIST_TERM
 };
 
+struct lws_protocol_vhost_options *extra_mimetypes(void);
+void free_extra_mimetypes(struct lws_protocol_vhost_options *f);
+
 void sigint_handler(int sig)
 {
 	interrupted = 1;
@@ -316,13 +319,6 @@ int main(int argc, char **argv) {
 	sigset_t mask;
 	char filename[PATH_MAX];
 
-	static const struct lws_protocol_vhost_options pvo_mime = {
-		NULL,				/* "next" pvo linked-list */
-		NULL,				/* "child" pvo linked-list */
-		".mp3",				/* file suffix to match */
-		"audio/mpeg"		/* mimetype to use */
-	};
-
 	/* ...and begin. */
 
 	while(1) {
@@ -493,7 +489,7 @@ int main(int argc, char **argv) {
 	mount->origin = config->origin;
 	mount->origin_protocol = LWSMPRO_FILE;
 	mount->def = config->default_doc;
-	mount->extra_mimetypes = &pvo_mime;
+	mount->extra_mimetypes = extra_mimetypes();
 	mount->cache_max_age = 604800;
 	mount->cache_reusable = 1;
 	mount->cache_revalidate = 1;
@@ -578,4 +574,36 @@ int main(int argc, char **argv) {
 	if(mount) free(mount);
 	free_config(config);
 	locid_log("Shutdown complete.");
+}
+
+struct lws_protocol_vhost_options *extra_mimetypes(void) {
+
+	struct lws_protocol_vhost_options *new = NULL;
+	struct lws_protocol_vhost_options *ret = NULL;
+	char *mimetype[]= {
+		".mp3","audio/mpeg",
+		".webp","image/webp",
+		NULL,NULL
+	};
+
+	for(int i=0;mimetype[i]!=NULL;i=i+2) {
+		new = (struct lws_protocol_vhost_options *)malloc(sizeof(struct lws_protocol_vhost_options));
+		new->next = ret;
+		new->options = NULL;
+		new->name = strdup(mimetype[i]);
+		new->value = strdup(mimetype[i+1]);
+		ret = new;
+	};
+	return(ret);
+}
+
+void free_extra_mimetypes(struct lws_protocol_vhost_options *f) {
+	struct lws_protocol_vhost_options *n;
+	while(f) {
+		n = f->next;
+		if(n->name) free(n->name);
+		if(n->value) free(n->value);
+		free(f);
+		f = n;
+	}
 }
