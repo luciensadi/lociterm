@@ -736,7 +736,6 @@ class MenuHandler {
 		//localStorage.setItem("credshadow",JSON.stringify(fullset));
 	}
 
-
 	create_settings() {
 		let overlay;
 		let box;
@@ -770,7 +769,9 @@ class MenuHandler {
 			"theme-select",
 			"Theme",
 			this.lociterm.lociThemes,
-			((e)=>{ this.lociterm.applyThemeNo(e.srcElement.value); })
+			((e)=>{
+				this.lociterm.applyThemeNo(e.srcElement.value); 
+			})
 		);
 		box.appendChild(l);
 

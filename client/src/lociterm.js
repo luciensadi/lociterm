@@ -120,6 +120,7 @@ class LociTerm {
 		this.echo_mode = 0;
 		this.gmcp = new GMCP(this);
 		this.crtfilter = new CRTFilter("crtfilter");
+		this.encoding = "utf-8";
 		this.cpdecoder = new CpDecoder();
 
 		// code. 
@@ -542,14 +543,18 @@ class LociTerm {
 				// with the next message.
 
 				try {
-					// fatal:true here because we want the thing to fail if there's a
-					// partial sequence.
-					str = new TextDecoder('utf8', {fatal:true}).decode(output);
+					if(this.encoding === "cp437") {
+						str = this.cpdecoder.decode(output);
+					} else {
+						// fatal:true here because we want the thing to fail if there's a
+						// partial sequence.
+						str = new TextDecoder(this.encoding, {fatal:true}).decode(output);
+					}
 				} catch (e) {
 					let v = new DataView(output);
 					let i=v.byteLength -1;
 					/* skip backwards from the last byte, over any sequence bytes */
-					while( (v.getUint8(i) & 0xc0) == 0x80 ) {
+					while((i>0) && (v.getUint8(i) & 0xc0) == 0x80 ) {
 						i--;
 					}
 					// the retry chunk has had the partial utf sequence removed.
@@ -570,7 +575,7 @@ class LociTerm {
 					// slowly.  If that happens... fix something else.
 
 					try {
-						str = new TextDecoder('utf8', {fatal:true}).decode(retry);
+						str = new TextDecoder(this.encoding, {fatal:true}).decode(retry);
 					} catch (e) {
 						str = this.cpdecoder.decode(retry);
 					}

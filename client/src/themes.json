@@ -10,7 +10,7 @@
 		},
 		"xtermoptions": {
 			"drawBoldTextInBrightColors": 1,
-			"minimumContrastRatio": 1,
+			"minimumContrastRatio": 1.4,
 			"bellStyle": "sound",
 			"fontSize": "16",
 			"fontFamily": "LOFont,courier",
@@ -21,7 +21,7 @@
 			"scrollback": 1000,
 			"scrollOnUserInput": true,
 			"theme": {
-				"black": "#3f3f3f",
+				"black": "#000000",
 				"red": "#fd233e",
 				"green": "#1cbd30",
 				"yellow": "#b4a543",
@@ -105,7 +105,7 @@
 				"cursorAccent": "#101010",
 				"foreground": "#dcdccc",
 				"background": "#101010",
-				"black": "#3f3f3f",
+				"black": "#000000",
 				"red": "#B05050",
 				"green": "#60b48a",
 				"yellow": "#dfaf8f",
@@ -219,7 +219,7 @@
 				"cursorAccent": "#24b548" ,
 				"selection": "#33ff66",
 
-				"black": "#2fee5f",
+				"black": "#000000",
 				"red": "#0f4c1e",
 				"green": "#1d953b",
 				"yellow": "#24b548",
@@ -263,7 +263,7 @@
 				"cursorAccent": "#e5a72d" ,
 				"selection": "#33ff66",
 
-				"black": "#eeae2f",
+				"black": "#000000",
 				"red": "#4c370f",
 				"green": "#956d1d",
 				"yellow": "#b58424",
