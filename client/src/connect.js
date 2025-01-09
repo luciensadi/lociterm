@@ -556,121 +556,114 @@ class ConnectGame {
 		// ADD one for this is the default game.
 
 		l = document.createElement('div');
+		l.id = `${id}_description`;
 		cdiv.appendChild(l);
-		divstack.push(l);
-		cdiv = l;
 
 		// type of game
-		l = document.createElement('div');
-		if(mssp.GAMEPLAY) {
-			l.innerText += `${mssp.GAMEPLAY} `;
-		}
-		if(mssp.GENRE && mssp.SUBGENRE) {
-			l.innerText += `${mssp.GENRE}/${mssp.SUBGENRE} `;
-		} else if(mssp.GENRE) {
-			l.innerText += `${mssp.GENRE} `;
-		} else if(mssp.SUBGENRE) {
-			l.innerText += ` ${mssp.SUBGENRE} `;
-		}
-		cdiv.appendChild(l);
+		let mssptext = "";
 
-		l = document.createElement('div');
+		if(mssp.GAMESYSTEM && (mssp.GAMESYSTEM.toLowerCase() !== "none")) {
+			mssptext += ` ${mssp.GAMESYSTEM}`;
+		}
+		if(mssp.GAMEPLAY && (mssp.GAMEPLAY.toLowerCase() !== "none")) {
+			mssptext += ` ${mssp.GAMEPLAY}`;
+		}
+
+		if(mssp.GENRE && mssp.SUBGENRE) {
+			mssptext += ` ${mssp.GENRE} / ${mssp.SUBGENRE}`;
+		} else if(mssp.GENRE) {
+			mssptext += ` ${mssp.GENRE}`;
+		} else if(mssp.SUBGENRE) {
+			mssptext += ` ${mssp.SUBGENRE}`;
+		}
+
 		if(mssp.LANGUAGE) {
-			l.innerText += `${mssp.LANGUAGE} Speaking `;
+			mssptext += ` ${mssp.LANGUAGE} Speaking Server`;
 		}
+
 		if(mssp.LOCATION) {
-			l.innerText += `Server in ${mssp.LOCATION} `;
+			mssptext += ` located in ${mssp.LOCATION}`;
 		}
-		cdiv.appendChild(l);
+
+		if(mssptext !== "") {
+			mssptext += `. `;
+		}
+		l.innerText += mssptext;
+		
 
 		// FAMILY and CODEBASE
 		if(mssp.FAMILY || mssp.CODEBASE) {
-			l = document.createElement('div');
-			l.innerText+= "Running ";
+			mssptext = " Runs";
 			if(mssp.FAMILY) {
-				l.innerText += `${mssp.FAMILY} `;
+				mssptext += ` ${mssp.FAMILY}`;
 			}
 			if(mssp.CODEBASE) {
-				l.innerText += `${mssp.CODEBASE}`;
+				mssptext += ` ${mssp.CODEBASE}`;
 			}
-		cdiv.appendChild(l);
+			mssptext += `. `;
+			l.innerText += mssptext;
+		}
+
+
+		if( (!game.ssl) &&
+			(mssp.SSL) &&
+			(mssp.SSL > 1)
+		) {
+			mssptext = ` Supports SSL on port ${mssp.SSL}. `;
+			l.innerText += mssptext;
+		}
+
+		if(mssp.CREATED) {
+			let now = new Date().getFullYear();
+			let years = now - mssp.CREATED;
+			if( years > 1 ) {
+				l.innerText += ` Online for ${years} years.`;
+			}
 		}
 
 		if(mssp.DESCRIPTION) {
 			l = document.createElement('div');
 			l.innerText = `${mssp.DESCRIPTION}`;
 			cdiv.appendChild(l);
-			divstack.push(l);
-			cdiv = l;
 		}
 		
-		if( (!game.ssl) &&
-			(mssp.SSL) &&
-			(mssp.SSL > 1)
-		) {
-			l = document.createElement('div');
-			l.innerText = `Supports SSL on port ${mssp.SSL}`;
-			cdiv.appendChild(l);
-			divstack.push(l);
-			cdiv = l;
-		}
-
 		if(mssp.WEBSITE) {
-			l = document.createElement('div');
+			l = this.connect_link("Website",mssp.WEBSITE,"");
 			cdiv.appendChild(l);
-			divstack.push(l);
-			cdiv = l;
-			t = document.createTextNode("Website: ");
-			cdiv.appendChild(t);
-			l = document.createElement('a');
-			l.href = mssp.WEBSITE;
-			l.target = "_blank";
-			if(mssp.WEBSITE.length > 30) {
-				l.innerText = mssp.WEBSITE.substr(0,30);
-				l.innerText += " …";
-			} else {
-				l.innerText = mssp.WEBSITE;
-			}
-			cdiv.appendChild(l);
-			divstack.pop(); //imgcontainer
-			cdiv = divstack[divstack.length-1];
-		}
-
-		if(mssp.DISCORD) {
-			l = document.createElement('div');
-			cdiv.appendChild(l);
-			divstack.push(l);
-			cdiv = l;
-			t = document.createTextNode("Discord: ");
-			cdiv.appendChild(t);
-			l = document.createElement('a');
-			l.href = mssp.WEBSITE;
-			l.target = "_blank";
-			if(mssp.DISCORD.length > 32) {
-				l.innerText = mssp.DISCORD.substr(0,32);
-				l.innerText += "…";
-			} else {
-				l.innerText = mssp.DISCORD;
-			}
-			cdiv.appendChild(l);
-			divstack.pop(); //imgcontainer
-			cdiv = divstack[divstack.length-1];
 		}
 
 		if(mssp.CONTACT) {
-			l = document.createElement('div');
-			l.innerText = `Contact: ${mssp.CONTACT}`;
+			l = this.connect_link("Contact",`mailto:${mssp.CONTACT}`,mssp.CONTACT);
 			cdiv.appendChild(l);
 		}
 
-		l = document.createElement('div');
-		if(game.ssl) {
-			l.innerText = "telnets://";
-		} else {
-			l.innerText = "telnet://";
+		if(mssp.DISCORD) {
+			l = this.connect_link("Discord",mssp.DISCORD,"");
+			cdiv.appendChild(l);
 		}
-		l.innerText += `${game.host}:${game.port}`;
-		cdiv.appendChild(l);
+
+		if(1) {  // Telnet: link
+			let l;
+			if(game.ssl) {
+				l = this.connect_link(`TelnetSSL`,
+					`telnets://${game.host}:${game.port}`,
+					`telnet-ssl ${game.host} ${game.port}`
+				);
+			} else {
+				l = this.connect_link(`Telnet`,
+					`telnet://${game.host}:${game.port}`,
+					`telnet ${game.host} ${game.port}`
+				);
+			}
+			cdiv.appendChild(l);
+		}
+
+		if(1) {  // Lociterm: share link
+			let locihref = `${document.location.href}?host=${game.host}&port=${game.port}`
+			l = this.connect_link("LociTerm",locihref,"");
+			cdiv.appendChild(l);
+		}
+
 
 		divstack.pop(); 
 		cdiv = divstack[divstack.length-1];
@@ -728,6 +721,36 @@ class ConnectGame {
 				this.lociterm.menuhandler.applyMenuNo(idx);
 			}
 		}
+	}
+
+	// Create a div with a titled link in it.
+	connect_link( name, href, text="" ) {
+
+		if( text === "" ) {
+			if(href.length > 28) {
+				text = href.substr(0,26);
+				text += " …";
+			} else {
+				text = href;
+			}
+		}
+
+		let cdiv = document.createElement('div');
+		cdiv.classList.add('stdlink');
+		//let t = document.createTextNode(name);
+		let t = document.createElement("label");
+		t.innerText = name+":";
+		t.classList.add('stdlink');
+		cdiv.appendChild(t);
+		let l = document.createElement('a');
+		l.classList.add('stdlink');
+		l.href = href;
+		l.target = "_blank";
+		l.innerText = text;
+
+		cdiv.appendChild(l);
+		return(cdiv);
+
 	}
 
 }

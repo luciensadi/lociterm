@@ -23,7 +23,6 @@
 	--menuside-close-right: -100%;
 }
 
-
 .menuhandler {
 	justify-content: center;
 	align-items: center;
@@ -330,29 +329,46 @@
 	aspect-ratio: auto;
 }
 
+div.stdlink {
+	display: flex;
+	align-items: center;
+	min-height: var(--finger-size);
+	justify-content: center;
+	column-gap: 0.5em;
+	flex-wrap: wrap;
+}
+
+a.stdlink {
+	color: var(--book-link-color);
+}
+
+label.stdlink {
+}
+
 .gameabout {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 }
 
-.gameabout a {
+a.gameabout {
 	min-height: var(--finger-size);
 	color: var(--book-link-color);
 }
 
-.gameabout figure {
+figure.gameabout {
 	display: grid;
 	justify-items: center;
 }
 
-.gameabout button {
+button.gameabout {
 	width: 90%;
 }
 
-.gameabout div {
+div.gameabout {
 }
 
+	
 .gamename {
 	font-weight: bold;
 	font-size: calc(var(--font-size) * 1.1);
