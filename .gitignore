@@ -26,3 +26,12 @@ _$*
 *.ln
 core
 # CVS default ignores end
+client/dist/
+client/node_modules/
+dist/
+server/src/cscope.out
+server/src/local.conf
+server/src/locid.prev
+lociterm
+server/src/build/
+server/src/locid
