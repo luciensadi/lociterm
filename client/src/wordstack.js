@@ -33,7 +33,7 @@ class WordStack {
 
 		if(selection === "") return(false);
 
-		const punctuation = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
+		const punctuation = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~\n';
 
 		let words = selection.split(" ");
 		if(words.length !== 1) {

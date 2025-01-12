@@ -589,8 +589,7 @@ class ConnectGame {
 			mssptext += `. `;
 		}
 		l.innerText += mssptext;
-		
-
+	
 		// FAMILY and CODEBASE
 		if(mssp.FAMILY || mssp.CODEBASE) {
 			mssptext = " Runs";
@@ -620,6 +619,12 @@ class ConnectGame {
 				l.innerText += ` Online for ${years} years.`;
 			}
 		}
+
+		// Age warning
+		if( mssp["MINIMUM AGE"] > 4 ) {
+			l.innerText += ` For players age ${mssp["MINIMUM AGE"]} or older.`;
+		}
+
 
 		if(mssp.DESCRIPTION) {
 			l = document.createElement('div');

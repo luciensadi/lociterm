@@ -799,7 +799,6 @@ class MenuHandler {
 		);
 		label.appendChild(fontsize);
 
-
 		l = this.create_generic_selector(
 			"menu-select",
 			"Menu Style",
