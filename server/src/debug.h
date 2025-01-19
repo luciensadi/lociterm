@@ -41,7 +41,7 @@
 #define DEBUG_ALL		((1<<DEBUG_MAX)-1)
 
 #define DEBUG_OFF (DEBUG_LOG)
-#define DEBUG_ON (DEBUG_LOG|DEBUG_PROXY|DEBUG_GAME|DEBUG_CLIENT|DEBUG_TELNET|DEBUG_DB)
+#define DEBUG_ON (DEBUG_LOG|DEBUG_PROXY|DEBUG_GAME|DEBUG_CLIENT|DEBUG_TELNET|DEBUG_DB|DEBUG_MSSP)
 //#define DEBUG_ON DEBUG_ALL
 
 #define locid_debug(facility, pc, args...) if(global_debug_facility & facility) { locid_Debug( __func__, facility, pc, args); }

@@ -346,6 +346,11 @@ class ConnectGame {
 				// This is a default game.
 				data.innerText += "📌";
 			}
+			if((game.updated == 1)) {
+				// Server says recently changed mssp data
+				// data.innerText += "🌱";
+				data.innerText += "🔥";
+			} 
 			if((game.ssl == 1)) {
 				// This is in SSL game.
 				data.innerText += "🔐";
