@@ -277,6 +277,29 @@ class ConnectGame {
 		l.classList.add('gamelist');
 		l.innerText = "(Nothing yet...)";
 
+		let legend = document.createElement('div');
+		{
+			let deets = document.createElement('details');
+			legend.appendChild(deets)
+			let summary = document.createElement('summary');
+			summary.innerText = "Legend";
+			deets.appendChild(summary);
+			let ul = document.createElement('ul');
+			deets.appendChild(ul);
+			let data = new Array;
+			data.push("📌 LociTerm Default Host");
+			data.push("✅ Your Host");
+			data.push("🔥 Recently Updated Game");
+			data.push("🔐 Uses Encrypted Telnet");
+
+			data.forEach( (v,i,a) => {
+				let li = document.createElement('li');
+				ul.appendChild(li);
+				li.innerText = v;
+			});
+		}
+		cdiv.appendChild(legend);
+
 		l = document.createElement('button');
 		cdiv.appendChild(l);
 		l.id = `${elementid}_suggest`;
@@ -337,7 +360,7 @@ class ConnectGame {
 			data.innerText = "";
 			if( (this.hostname == game.host) &&
 				(this.port == game.port) &&
-				(this.ssl == game.ssl)
+				(this.ssl == (game.ssl | false))
 			) {  
 				// This is the game we're connected to.
 				data.innerText += "✅";

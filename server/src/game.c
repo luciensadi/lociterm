@@ -63,6 +63,7 @@ game_conn_t *new_game_conn(void) {
 
 	n->check_wait = 0;
 	n->check_protocol = 0;
+	n->request_mssp = 0;
 	n->echo_opt = 0;
 	n->sga_opt = 0;
 	n->eor_opt = 0;

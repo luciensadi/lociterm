@@ -210,6 +210,13 @@ int loci_connect_to_game_host(proxy_conn_t *pc, char *hostname, int port, int ss
 		json_object_put(pc->game_db_entry);
 	}
 	pc->game_db_entry = game_db_gamelookup(hostname,port,ssl);
+	
+	if(pc->game_db_entry) {
+		int gameid = json_object_get_int(json_object_object_get(pc->game_db_entry,"id"));
+		pc->game->request_mssp = game_db_should_request_mssp(gameid);
+	} else {
+		pc->game->request_mssp = 1;
+	}
 
 	/* lws example code likes to clear out structures before use */
 	memset(&info, 0, sizeof(info));

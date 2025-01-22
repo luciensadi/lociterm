@@ -75,7 +75,7 @@ class GMCP {
 
 		var fn = this.command.get(module.toLowerCase());
 		if(fn == undefined) {
-			console.warn("Unsupported module: " + module);
+			console.warn(`Unsupported module: ${module} msg ${message}`);
 			return;
 		}
 		return( fn(message) );

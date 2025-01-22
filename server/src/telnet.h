@@ -37,7 +37,6 @@
 
 /* exported function declarations */
 
-void free_telopts(telnet_telopt_t *t);
 telnet_t *loci_telnet_init(game_conn_t *gc);
 void loci_telnet_free(game_conn_t *gc);
 void loci_telnet_send_naws(telnet_t *telnet, int width, int height);

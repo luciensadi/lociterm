@@ -60,5 +60,6 @@ json_object *game_db_get_server_list(void);
 json_object *game_db_mssplookup(char *host, int port, int ssl);
 void game_db_list(int approved);
 void game_db_update(int id,game_db_status_t status);
+int game_db_should_request_mssp(int gameid);
 
 #endif /* LOCI_GAMEDB_H */

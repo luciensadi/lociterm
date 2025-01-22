@@ -62,6 +62,9 @@ struct locid_conf {
 	GList *db_banned_ports;
 	int db_min_protocol;
 	int db_allow_numeric_ip;
+	int mssp_crawl_delay;
+	int mssp_recently_updated;
+	gchar **mssp_notable_fields;
 };
 
 /* exported global variable declarations */

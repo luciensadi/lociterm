@@ -404,6 +404,11 @@ div.gameabout {
 	width: 100%;
 }
 
+.menupop ul {
+	list-style: none;
+	margin-block-start: 0em;
+}
+
 .close {
 	position: absolute;
 	right: 2mm;
@@ -446,7 +451,6 @@ div.gameabout {
 	min-width: 16em;
 	overflow-y: auto;
 	margin: 1mm;
-	margin-bottom: 1em;
 }
 
 .gamelist tr {

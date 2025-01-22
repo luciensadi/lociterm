@@ -66,7 +66,7 @@
 
 /* global variable declarations */
 
-const telnet_telopt_t fixed_telopts[] = {
+const telnet_telopt_t supported_telopts[] = {
 	{ TELNET_TELOPT_ECHO,		TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_SGA,		TELNET_WILL,	TELNET_DO },
 	{ TELNET_TELOPT_EOR,		TELNET_WILL,	TELNET_DO },
@@ -76,6 +76,19 @@ const telnet_telopt_t fixed_telopts[] = {
 	{ TELNET_TELOPT_NAWS,		TELNET_WILL,	TELNET_DONT },
 	{ TELNET_TELOPT_GMCP,		TELNET_WILL,	TELNET_DO },
 	{ TELNET_TELOPT_MSSP,		TELNET_WILL,	TELNET_DO },
+	{ -1, 0 ,0 }
+};
+
+const telnet_telopt_t nomssp_telopts[] = {
+	{ TELNET_TELOPT_ECHO,		TELNET_WONT,	TELNET_DO },
+	{ TELNET_TELOPT_SGA,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_EOR,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_TTYPE,		TELNET_WILL,	TELNET_DONT },
+	{ TELNET_TELOPT_MCCP2,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_NEW_ENVIRON,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_NAWS,		TELNET_WILL,	TELNET_DONT },
+	{ TELNET_TELOPT_GMCP,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_MSSP,		TELNET_WONT,	TELNET_DONT },
 	{ -1, 0 ,0 }
 };
 
@@ -471,15 +484,24 @@ void loci_telnet_handler(telnet_t *telnet, telnet_event_t *event, void *user_dat
 }
 
 telnet_t *loci_telnet_init(game_conn_t *gc) {
+
+	telnet_telopt_t *telopts=NULL;
+
 	if(!gc) {
 		return(NULL);
+	}
+
+	if(gc->request_mssp) {
+		telopts = supported_telopts;
+	} else {
+		telopts = nomssp_telopts;
 	}
 	
 	loci_environment_init(gc->pc);
 	if(gc->game_telnet) {
 		locid_debug(DEBUG_TELNET,gc->pc,"game_telnet already exists! re-using");
 	} else {
-		gc->game_telnet = telnet_init(fixed_telopts,loci_telnet_handler, 0 , (void *)gc);
+		gc->game_telnet = telnet_init(telopts,loci_telnet_handler, 0 , (void *)gc);
 	}
 
 	return(gc->game_telnet);
@@ -554,3 +576,4 @@ int set_echosga(int state, int telopt, int yesno) {
 
 	return(newstate);
 }
+

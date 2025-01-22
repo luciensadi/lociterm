@@ -267,6 +267,23 @@ struct locid_conf *new_config(char *filename) {
 	}
 	free(tmpstr);
 
+	c->mssp_crawl_delay = atoi(get_conf_string(gkf,"mssp","crawl_delay","0"));
+	c->mssp_recently_updated = atoi(get_conf_string(gkf,"mssp","recently_updated","168"));
+
+	c->mssp_notable_fields = g_key_file_get_string_list (
+		gkf, "mssp", "notable_fields", NULL, NULL
+	);
+	if(c->mssp_notable_fields == NULL) {
+		g_autoptr(GStrvBuilder) builder = g_strv_builder_new ();
+		g_strv_builder_add (builder, "CODEBASE");
+		g_strv_builder_add (builder, "DISCORD");
+		g_strv_builder_add (builder, "WEBSITE");
+		g_strv_builder_add (builder, "ICON");
+		g_strv_builder_add (builder, "CONTACT");
+		g_strv_builder_add (builder, "STATUS");
+		c->mssp_notable_fields = g_strv_builder_end (builder);
+	}
+
 	g_key_file_free(gkf);
 	return(c);
 }
@@ -295,6 +312,9 @@ void free_config(struct locid_conf *c) {
 	if(c->db_location) free(c->db_location);
 	if(c->db_banned_ports) {
 		g_list_free_full(c->db_banned_ports,free);
+	}
+	if(c->mssp_notable_fields) {
+		g_strfreev(c->mssp_notable_fields);
 	}
 
 	free(c);

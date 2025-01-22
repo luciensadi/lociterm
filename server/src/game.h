@@ -40,6 +40,8 @@ typedef struct game_conn {
 
 	int check_wait;					/* Protocol verification timer */
 	int check_protocol;				/* Protocol verification flags */
+	
+	int request_mssp;				/* include mssp in connection request? */
 
 	int ttype_state;				/* */
 	int echo_opt;					/* Is game server providing echo? */

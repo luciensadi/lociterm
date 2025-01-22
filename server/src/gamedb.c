@@ -262,6 +262,7 @@ json_object *game_db_gamelookup(char *host, int port, int ssl) {
 			"'host',HOST,'port',PORT,'ssl',SSL, "
 			"'default_game',default_game, "
 			"'icon',ICON, "
+			/*"'mmsp_hours_ago',MSSP_HOURS_AGO, "*/
 			"'status',STATUS "
 		") FROM ( "
 			"select "
@@ -270,6 +271,7 @@ json_object *game_db_gamelookup(char *host, int port, int ssl) {
 				"MAX(m.created), "
 				"default_game, "
 				"COALESCE( g.ICON, json_extract(m.mssp,'$.ICON')) as ICON, "
+				/*"((unixepoch(CURRENT_TIMESTAMP) - unixepoch(g.LAST_MSSP))/3600) as MSSP_HOURS_AGO, "*/
 				"status "
 			"FROM GAMEDB as g "
 			"LEFT JOIN MSSP AS m on g.ID == m.game "
@@ -486,7 +488,6 @@ int game_db_exec(proxy_conn_t *pc,char *sqlstr) {
 		return(ret);
 	}
 
-
 	if ( (ret=sqlite3_exec(db, sqlstr, NULL, NULL, &errmsg)) != SQLITE_OK ) {
 		locid_debug(DEBUG_DB,pc,"Ooops. '%s' -> %s",sqlstr, errmsg);
 		if(errmsg) sqlite3_free(errmsg);
@@ -509,7 +510,6 @@ int game_db_update_mssp(proxy_conn_t *pc) {
 	/* Check updated status before replacing the db's most recent mssp.  Its
 	 * just easier to get at the most recent one before replacing it. :) */
 	int updated = game_db_is_mssp_updated(pc);
-	locid_debug(DEBUG_DB,NULL,"updated = %d",updated);
 
 	/* Regardless of update status, store the current MSSP data.  The update
 	 * status only triggers on certain fields, and it ignores others, like
@@ -623,7 +623,7 @@ json_object *game_db_get_server_list(void) {
 					"PORT, "
 					"SSL, "
 					"DEFAULT_GAME, "
-					"IIF( (JULIANDAY(CURRENT_TIMESTAMP)-JULIANDAY(GAME_UPDATED)) < %d ,1,0) "
+					"IIF( (UNIXEPOCH(CURRENT_TIMESTAMP)-UNIXEPOCH(GAME_UPDATED))/3600 <= %d ,1,0) "
 						"as UPDATED "
 				"FROM GAMEDB AS g "
 				"LEFT JOIN MSSP AS m on g.ID == m.GAME "
@@ -634,7 +634,7 @@ json_object *game_db_get_server_list(void) {
 					"DEFAULT_GAME DESC, "
 					"LAST_CONNECTION DESC "
 			");",
-			7, /* number of days after which it is no longer recently updated.*/
+			config->mssp_recently_updated,
 			DBSTATUS_APPROVED
 		);
 
@@ -729,6 +729,7 @@ int game_db_is_mssp_updated(proxy_conn_t *pc) {
 
 	if(!jobj) {
 		/* there was no mssp data saved. */
+		locid_debug(DEBUG_MSSP,NULL,"No previous data =1");
 		return(1);
 	}
 
@@ -736,24 +737,18 @@ int game_db_is_mssp_updated(proxy_conn_t *pc) {
 	sqlite3_finalize(stmt);
 	sqlite3_close(db);
 
-	/* jobj has the data now compare the important fields. If any are
+	/* jobj has the data now compare the important fields. If any one is
 	 * different, return 1 */
-	char *fields[] = { 
-		"CODEBASE",
-		"DISCORD",
-		"WEBSITE",
-		"STATUS",
-		"AREAS",
-		"HELPFILES",
-		"MOBILES",
-		"OBJECTS",
-		"ROOMS",
-		NULL
-	};
+	gchar **fields = config->mssp_notable_fields;
+
 	for(int i=0;fields[i];i++) {
 		char *a = json_object_get_string(json_object_object_get(jobj,fields[i]));
 		char *b = json_object_get_string(json_object_object_get(pc->mssp,fields[i]));
 
+		locid_debug(DEBUG_DB,NULL,
+			"Checking MSSP '%s'",
+			fields[i]
+		);
 		if( !a && !b ) continue;
 
 		if( (!a || !b ) ||
@@ -770,6 +765,7 @@ int game_db_is_mssp_updated(proxy_conn_t *pc) {
 
 	/* dont forget to clean up the jobj. */
 	json_object_put(jobj);
+	locid_debug(DEBUG_MSSP,NULL," =%d",ret);
 
 	return(ret);
 	
@@ -836,13 +832,7 @@ json_object *game_db_mssplookup(char *host, int port, int ssl) {
 		return(NULL);
 	}
 
-	int row=0;
-	while (sqlite3_step(stmt) != SQLITE_DONE) {
-		locid_debug(DEBUG_DB,NULL,"Row %d, has %d columns",
-			row,
-			sqlite3_column_count(stmt)
-		);
-		locid_debug(DEBUG_DB,NULL,"%s",sqlite3_column_text(stmt, 0));
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		jobj = json_tokener_parse((const char*)sqlite3_column_text(stmt, 0));
 	}
 
@@ -1008,4 +998,80 @@ int game_db_get_version(void) {
 	sqlite3_close(db);
 
 	return(dbversion);
+}
+
+
+/* based on config and game db id.  returns 1 if connection should probe, 0 if
+ * the mssp request can be supressed.  */
+int game_db_should_request_mssp(int gameid) {
+
+	sqlite3 *db;
+	sqlite3_stmt *stmt;
+	char *sqlstr;
+	int lastmssp = 0;
+	int ret = 1;
+	int crawl_delay=0;
+
+	/* if the db isn't in use, grab the mssp because we have no lasting memory
+	 * of it.  The data can still be used to display 'About Game' information to
+	 * the client. */
+	if(!config->db_inuse) { 
+		return(1);
+	}
+
+	/* if the configured crawl delay is 0, then always request.  No more work
+	 * is required.*/
+	if((config->mssp_crawl_delay) <= 0) {
+		return(1);
+	}
+
+	if ( (sqlite3_open(config->db_location, &db) != SQLITE_OK) ) {
+		locid_debug(DEBUG_DB,NULL,"Ooops.  %s",sqlite3_errmsg(db));
+		return(1); /* Doh, no memory of it.  grab it. */
+	}
+
+	/* From this point on, don't simply return without cleanup! Set the ret
+	 * value as needed, and fall through.*/
+	ret = 1;  /* 1 is to request. */
+
+	sqlstr = sqlite3_mprintf(
+		"SELECT unixepoch(LAST_MSSP) from GAMEDB "
+		"WHERE ID IS %d;",
+		gameid
+	);
+
+	/* fetch the lastmssp time stamp. */
+	if ( (sqlite3_prepare(db,sqlstr,-1,&stmt,NULL) == SQLITE_OK) ){
+		while (sqlite3_step(stmt) == SQLITE_ROW) {	
+			lastmssp = sqlite3_column_int(stmt,0);
+		}
+		sqlite3_finalize(stmt);
+	}
+
+	if(lastmssp > 0) {
+		/* if you want to respect the server's preferred 'CRAWL DELAY', you can
+		 * check for that here with another db lookup, and update craw_delay to
+		 * the larger of our config and the game's preference  However, there
+		 * are so few servers that have any preference larger than 1 that I'm
+		 * not implementing it yet. */
+		crawl_delay = config->mssp_crawl_delay;
+
+		int now = time(0);
+		int age = (now - lastmssp)/3600;
+		if( age < crawl_delay) {
+			locid_debug(DEBUG_MSSP,NULL,
+				"Data is fresh for %d more hours.",
+				crawl_delay-age
+			);
+			ret = 0; /* No need to request, the data is fresh enough! */
+		}
+	} else {
+		ret = 1; /* no data, so request it. */
+	}
+
+	/* cleanup: */
+	sqlite3_free(sqlstr);
+	sqlite3_close(db);
+	return(ret);
+
 }
