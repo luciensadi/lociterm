@@ -30,7 +30,7 @@
 #define LOCID_LONGNAME "Last Outpost Client Implementation Demon"
 
 #ifndef LOCITERM_VERSION
-#define LOCITERM_VERSION "2.0.0-dev"
+#define LOCITERM_VERSION "2.1.0-dev"
 #endif
 
 /* structs and typedefs */
@@ -41,6 +41,7 @@ struct locid_conf {
 	char *mountpoint;
 	char *origin;
 	char *default_doc;
+	gchar **locid_debugflags;
 	char *client_security;
 	char *client_service;
 	char *client_launcher;

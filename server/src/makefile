@@ -39,7 +39,7 @@ LOCITERM_VERSION ?= 2.1-dev$(TS)
 # List the LOCI .c files here.  Order doesn't matter.  Dont worry
 # about header file dependencies, this makefile will figure them out
 # automatically.
-LOCI_CFILES = locid.c debug.c proxy.c client.c game.c connect.c telnet.c libtelnet.c gamedb.c iostats.c
+LOCI_CFILES = locid.c debug.c proxy.c client.c game.c connect.c telnet.c libtelnet.c gamedb.c iostats.c scan.c
 
 # The list of HFILES, (required for making the ctags database) is generated
 # automatically from the LOCI_CFILES list.  However, not everything in LOCI_CFILES
@@ -78,6 +78,7 @@ LINKLIBS += `pkg-config --libs libwebsockets`
 LINKLIBS += `pkg-config --libs glib-2.0`
 LINKLIBS += `pkg-config --libs json-c`
 LINKLIBS += `pkg-config --libs sqlite3`
+LINKLIBS += `pkg-config --libs libuv`
 
 # #### ############################################# ###
 # ####         Makefile magic begins here.           ###

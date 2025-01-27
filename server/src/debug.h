@@ -36,12 +36,13 @@
 #define DEBUG_DB		(1<<7)
 #define DEBUG_EVENTNO	(1<<8)
 #define DEBUG_PROXY		(1<<9)
+#define DEBUG_SCAN		(1<<10)
 
-#define DEBUG_MAX		(10)
+#define DEBUG_MAX		(11)
 #define DEBUG_ALL		((1<<DEBUG_MAX)-1)
 
 #define DEBUG_OFF (DEBUG_LOG)
-#define DEBUG_ON (DEBUG_LOG|DEBUG_PROXY|DEBUG_GAME|DEBUG_CLIENT|DEBUG_TELNET|DEBUG_DB|DEBUG_MSSP)
+#define DEBUG_ON (DEBUG_LOG|DEBUG_PROXY|DEBUG_GAME|DEBUG_CLIENT|DEBUG_TELNET|DEBUG_DB|DEBUG_MSSP|DEBUG_SCAN)
 //#define DEBUG_ON DEBUG_ALL
 
 #define locid_debug(facility, pc, args...) if(global_debug_facility & facility) { locid_Debug( __func__, facility, pc, args); }
@@ -61,6 +62,7 @@ void locid_log(char *str, ...);
 void locid_log_lws(int level, char *str);
 void locid_Debug(const char *caller, int facility, proxy_conn_t *pc, char *str, ...);
 int locid_breakpoint(int code);
+void set_debug_from_strvec(gchar **vec);
 
 
 #endif /* LOCID_DEBUG_H */

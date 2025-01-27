@@ -1,4 +1,11 @@
 ------- TODO --------------
+* The lociterm link in the about-game section isn't correct if the game was
+  connected to with a set of &host= type parameters.  Fix it!
+
+* Do loose matching on the url components.  if they give ?/host=  but no port
+ or ssl, try and find an approved partial match.  Same with ?host=&port= but
+ no ssl.  (which is the situation that brought this up.)
+
 * game_db_update needs to remove mssp table entries too
 
 * have color of the gear icon reflect the connection status?

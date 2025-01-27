@@ -54,7 +54,7 @@ char *dbstatus_str[] = {
 };
 
 /* database_version doesn't have to go up by 1, but it must never go down. */
-int database_version = 250116;
+int database_version = 250124;
 
 char database_definition[] = \
 	"CREATE TABLE IF NOT EXISTS DBVERSION ( "
@@ -89,7 +89,15 @@ char database_definition[] = \
 		"FOREIGN KEY(GAME) REFERENCES GAMEDB(ID),"
 		"CREATED DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
 		"MSSP JSONB "
-	");";
+	");"
+	"CREATE TABLE IF NOT EXISTS SCAN ( "
+		"GAME INTEGER NOT NULL PRIMARY KEY, "
+		"FOREIGN KEY(GAME) REFERENCES GAMEDB(ID),"
+		"LASTSCAN DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+		"STATUS INTEGER NOT NULL DEFAULT 2 "
+		"FOREIGN KEY(STATUS) REFERENCES GAMEDBSTATUS(ID) "
+	");"
+	;
 
 /* local function declarations */
 int game_db_port_is_banned(int port);
