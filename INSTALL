@@ -26,7 +26,7 @@ git clone --branch v4.3.3 https://libwebsockets.org/repo/libwebsockets
 cd libwebsockets
 mkdir build
 cd build
-cmake -DLWS_IPV6=ON -DLWS_WITH_ZLIB=ON -DLWS_WITHOUT_EXTENSIONS=OFF ..
+cmake -DLWS_IPV6=ON -DLWS_WITH_ZLIB=ON -DLWS_WITHOUT_EXTENSIONS=OFF -DLWS_WITH_LIBUV=ON -DLWS_WITH_EVENT_LIBS=ON ..
 make
 sudo make install
 
