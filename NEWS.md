@@ -1,5 +1,9 @@
 ## What's New
 
+### Version 2.2.0
+
+- First version with locibot db scanner.
+
 ### Version 2.1.0
 
 - First public relase of LociTerm 2 source!
