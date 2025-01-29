@@ -33,6 +33,7 @@
 #include "locid.h"
 #include "debug.h"
 #include "libtelnet.h"
+#include "scan.h"
 
 #include "gamedb.h"
 
@@ -270,7 +271,6 @@ json_object *game_db_gamelookup(char *host, int port, int ssl) {
 			"'host',HOST,'port',PORT,'ssl',SSL, "
 			"'default_game',default_game, "
 			"'icon',ICON, "
-			/*"'mmsp_hours_ago',MSSP_HOURS_AGO, "*/
 			"'status',STATUS "
 		") FROM ( "
 			"select "
@@ -279,7 +279,6 @@ json_object *game_db_gamelookup(char *host, int port, int ssl) {
 				"MAX(m.created), "
 				"default_game, "
 				"COALESCE( g.ICON, json_extract(m.mssp,'$.ICON')) as ICON, "
-				/*"((unixepoch(CURRENT_TIMESTAMP) - unixepoch(g.LAST_MSSP))/3600) as MSSP_HOURS_AGO, "*/
 				"status "
 			"FROM GAMEDB as g "
 			"LEFT JOIN MSSP AS m on g.ID == m.game "
@@ -640,6 +639,7 @@ json_object *game_db_get_server_list(void) {
 				"GROUP BY g.ID "
 				"ORDER BY "
 					"DEFAULT_GAME DESC, "
+					"UPDATED DESC, "
 					"LAST_CONNECTION DESC "
 			");",
 			config->mssp_recently_updated,

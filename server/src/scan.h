@@ -1,4 +1,4 @@
-/* scan.h - periodic database entry scanner */
+/* scan.h - locibot game scanner and crawler */
 /* Created: Sat Jan 25 01:55:54 PM EST 2025 malakai */
 /* $Id: $ */
 
@@ -24,14 +24,26 @@
 #define LO_SCAN_H
 
 #include "locid.h"
+#include "uv.h"
 
 /* global #defines */
 
 /* structs and typedefs */
+typedef struct scan_tbd_entry {
+	int id;
+	char *host;
+	int port;
+	int ssl;
+	int status;
+} scan_tbd_entry_t;
 
 /* exported global variable declarations */
 
 /* exported function declarations */
+void free_scan_tbd_entry(struct scan_tbd_entry *f);
+void scanner_finalize(proxy_conn_t *pc);
 void scanner_init(uv_loop_t *uvloop,struct locid_conf *config);
+void scanner_update_status(proxy_conn_t *pc,int dbstatus);
+
 
 #endif /* LO_SCAN_H */

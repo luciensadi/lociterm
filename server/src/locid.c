@@ -52,6 +52,7 @@
 
 static int interrupted;
 struct locid_conf *config;
+static	struct lws_context *locid_default_lws_context;
 
 static const lws_retry_bo_t retry = {
 	.secs_since_valid_ping = 3,
@@ -330,6 +331,13 @@ struct locid_conf *new_config(char *filename) {
 		g_strv_builder_add (builder, "STATUS");
 		c->mssp_notable_fields = g_strv_builder_end (builder);
 	}
+
+	c->scan_enabled = get_conf_boolean(gkf,"scan","enabled",0);
+	c->scan_dry_run = get_conf_boolean(gkf,"scan","dry_run",0);
+	c->scan_check_interval = get_conf_int(gkf,"scan","check_interval",15);
+	c->scan_expired = get_conf_int(gkf,"scan","expired",23);
+	c->scan_batch_size = get_conf_int(gkf,"scan","batch_size",5);
+	c->scan_batch_delay = get_conf_int(gkf,"scan","batch_delay",10);
 
 	g_key_file_free(gkf);
 	return(c);
@@ -614,7 +622,7 @@ int main(int argc, char **argv) {
 	/* associate the signal handler. */
 	info.signal_cb = signal_callback_lws;
 
-	context = lws_create_context(&info);
+	locid_default_lws_context = context = lws_create_context(&info);
 	if (!context) {
 		locid_log("LWS init failed!\n");
 		return 1;
@@ -679,4 +687,8 @@ void free_extra_mimetypes(struct lws_protocol_vhost_options *f) {
 		free(f);
 		f = n;
 	}
+}
+
+struct lws_context *locid_get_default_lws_context(void) {
+	return(locid_default_lws_context);
 }

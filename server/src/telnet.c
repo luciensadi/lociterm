@@ -104,15 +104,33 @@ int set_echosga(int state, int telopt, int yesno);
 /* cycle through ttypes. */
 void send_next_ttype(proxy_conn_t *pc) {
 
-	/* TODO make this selectable from the config file? */
-	char *mtts[] = {
-		"lociterm",
-		"XTERM",
-		"MTTS " MTTS_VALUE,
-		""
-	};
+	/* TODO make this selectable from the config file?  */
 
-	if(pc->game->ttype_state == ARRAY_SIZE(mtts)-1) {
+	gchar **mtts;
+	char str[256];
+
+	if(pc->scanner) {
+		g_autoptr(GStrvBuilder) builder = g_strv_builder_new ();
+		g_strv_builder_add (builder, "locibot");
+		g_strv_builder_add (builder, "XTERM");
+		g_snprintf(str,sizeof(str),"MTTS %d",(MTTS_BITS & (~MTTS_PROXY)));
+		g_strv_builder_add (builder, str);
+		g_strv_builder_add (builder, "");
+		mtts = g_strv_builder_end (builder);
+	} else {
+		g_autoptr(GStrvBuilder) builder = g_strv_builder_new ();
+		g_strv_builder_add (builder, "lociterm");
+		g_strv_builder_add (builder, "XTERM");
+		g_snprintf(str,sizeof(str),"MTTS %d",(MTTS_BITS | MTTS_PROXY));
+		g_strv_builder_add (builder, str);
+		g_strv_builder_add (builder, "");
+		mtts = g_strv_builder_end (builder);
+	}
+
+	int length=0;
+	for(;*mtts[length];length++);
+
+	if(pc->game->ttype_state == length) {
 		telnet_ttype_is(pc->game->game_telnet,mtts[pc->game->ttype_state-1]);
 		pc->game->ttype_state = 0;
 	} else {
@@ -120,6 +138,7 @@ void send_next_ttype(proxy_conn_t *pc) {
 		pc->game->ttype_state++;
 	}
 
+	g_strfreev(mtts);
 }
 
 struct telnet_environ_t *loci_new_env_var(int type, char *var, char *value) {

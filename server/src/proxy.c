@@ -34,6 +34,7 @@
 #include "telnet.h"
 #include "gamedb.h"
 #include "debug.h"
+#include "scan.h"
 
 /* structures and types */
 
@@ -79,6 +80,8 @@ proxy_conn_t *new_proxy_conn() {
 	n->client = new_client_conn();
 	n->client->pc = n;
 
+	n->scanner = NULL;
+
 	n->game = new_game_conn();
 	n->game->pc = n;
 
@@ -95,6 +98,9 @@ proxy_conn_t *new_proxy_conn() {
 }
 
 void free_proxy_conn(proxy_conn_t *f) {
+
+	if(f->scanner) free_scan_tbd_entry(f->scanner);
+	f->scanner = NULL;
 
 	if(f->client) free_client_conn(f->client);
 	f->client = NULL;
@@ -343,6 +349,8 @@ void loci_game_shutdown(proxy_conn_t *pc) {
 void loci_proxy_shutdown(proxy_conn_t *pc) {
 
 	if(!pc) return;
+
+	scanner_finalize(pc);
 
 	if(pc->game && pc->game->wsi_game) {
 		loci_game_shutdown(pc);

@@ -33,6 +33,7 @@
 #include "telnet.h"
 #include "gamedb.h"
 #include "iostats.h"
+#include "scan.h"
 
 #include "game.h"
 
@@ -172,10 +173,12 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 		if(game_db_get_status(pc) == DBSTATUS_NOT_CHECKED) {
 			game_db_update_status(pc,DBSTATUS_NO_ANSWER);
 		}
+		scanner_update_status(pc,DBSTATUS_NO_ANSWER);
 		pc->game->wsi_game = NULL;
 		set_game_state(pc,PRXY_INIT);
 		/* close the websocket side, rather than hang... */
-		loci_client_shutdown(pc);
+		// loci_client_shutdown(pc);
+		loci_proxy_shutdown(pc);
 		break;
 
 	case LWS_CALLBACK_CONNECTING:
@@ -203,7 +206,10 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 	case LWS_CALLBACK_RAW_CONNECTED:
 		locid_debug(DEBUG_LWS,pc,"LWS_CALLBACK_RAW_CONNECTED");
 		locid_info(pc,"Game side connected.");
-		game_db_update_lastconnection(pc);
+		/* update last connection if this isn't a locibot run. */
+		if(!(pc->scanner)) {
+			game_db_update_lastconnection(pc);
+		}
 		loci_telnet_init(pc->game);
 		if(pc->game->check_protocol || pc->game->check_wait) {
 			locid_info(pc,"Blocking for protocol check.");
@@ -214,6 +220,7 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 			if(game_db_get_status(pc) == DBSTATUS_NOT_CHECKED) {
 				game_db_update_status(pc,DBSTATUS_APPROVED);
 			}
+			scanner_update_status(pc,DBSTATUS_APPROVED);
 			set_game_state(pc,PRXY_UP);
 			loci_client_send_echosga(pc);
 		}
@@ -260,6 +267,7 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 			/* a security check was in process, but the connection has closed
 			 * without passing.*/
 			game_db_update_status(pc,DBSTATUS_BAD_PROTOCOL);
+			scanner_update_status(pc,DBSTATUS_BAD_PROTOCOL);
 			locid_info(pc,"game didn't meet protocol requirements.");
 		}
 
@@ -297,6 +305,7 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 				pc->game->check_wait = 0;
 				locid_debug(DEBUG_TELNET,pc,"All protocol checks PASSED, unblocking.");
 				game_db_update_status(pc,DBSTATUS_APPROVED);
+				scanner_update_status(pc,DBSTATUS_APPROVED);
 				locid_info(pc,"game passed protocol requirements.");
 				set_game_state(pc,PRXY_UP);
 			}
@@ -349,6 +358,11 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 
 		/* and pet the doggie. */
 		if(loci_proxy_watchdog(pc)) {
+			loci_proxy_shutdown(pc);
+		}
+
+		/* but... if this was a scanner initiated connection, close it down. */
+		if(pc->scanner) {
 			loci_proxy_shutdown(pc);
 		}
 

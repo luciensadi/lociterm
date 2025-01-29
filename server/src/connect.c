@@ -222,7 +222,10 @@ int loci_connect_to_game_host(proxy_conn_t *pc, char *hostname, int port, int ss
 	memset(&info, 0, sizeof(info));
 
 	info.method = "RAW";
-	info.context = lws_get_context(pc->client->wsi_client);
+	//info.context = lws_get_context(pc->client->wsi_client);
+
+	info.context = locid_get_default_lws_context();
+
 	info.port = port;
 	info.address = hostname;
 	info.host = hostname;

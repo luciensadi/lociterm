@@ -66,6 +66,13 @@ struct locid_conf {
 	int mssp_crawl_delay;
 	int mssp_recently_updated;
 	gchar **mssp_notable_fields;
+	int scan_enabled;
+	int scan_dry_run;
+	int scan_check_interval;
+	int scan_expired;
+	int scan_batch_size;
+	int scan_batch_delay;
+	char *scan_contact_url;
 };
 
 /* exported global variable declarations */
@@ -73,5 +80,6 @@ extern struct locid_conf *config;
 
 /* exported function declarations */
 char *get_proxy_name(void);
+struct lws_context *locid_get_default_lws_context(void);
 
 #endif /* LO_LOCID_H */

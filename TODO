@@ -6,7 +6,7 @@
  or ssl, try and find an approved partial match.  Same with ?host=&port= but
  no ssl.  (which is the situation that brought this up.)
 
-* game_db_update needs to remove mssp table entries too
+* game_db_update needs to remove mssp table entries too (on a delete.)
 
 * have color of the gear icon reflect the connection status?
 
@@ -96,6 +96,11 @@
 * Server drop perms after launch?
 
 ------------- DONE! -----------------
+- set a user agent for the scanner.
+	well, I changed the terminal type to locibot when its scanning.
+
++ put scanner parameters into the config file.
+
 + convert mssp from most recent to a log
 
 + Add mssp parameters to the config file.

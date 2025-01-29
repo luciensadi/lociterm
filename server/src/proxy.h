@@ -60,6 +60,7 @@ typedef struct proxy_conn {
 	game_conn_t *game;
 
 	struct timeval watchdog;
+	struct scan_tbd_entry *scanner;
 
 	json_object *game_db_entry;     /* contains hostname, port, ssl, ... */
 	json_object *mssp;				/* TEMPORARY MSSP data recieved from game. */

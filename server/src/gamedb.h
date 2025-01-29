@@ -61,5 +61,6 @@ json_object *game_db_mssplookup(char *host, int port, int ssl);
 void game_db_list(int approved);
 void game_db_update(int id,game_db_status_t status);
 int game_db_should_request_mssp(int gameid);
+int game_db_exec(proxy_conn_t *pc,char *sqlstr);
 
 #endif /* LOCI_GAMEDB_H */
