@@ -287,9 +287,9 @@ class ConnectGame {
 			let ul = document.createElement('ul');
 			deets.appendChild(ul);
 			let data = new Array;
-			data.push("📌 LociTerm Default Host");
-			data.push("✅ Your Host");
-			data.push("🔥 Recently Updated Game");
+			data.push("📌 LociTerm Default");
+			data.push("✅ Connected");
+			data.push("🔥 Recently Updated");
 			data.push("🔐 Uses Encrypted Telnet");
 
 			data.forEach( (v,i,a) => {
@@ -692,7 +692,10 @@ class ConnectGame {
 		}
 
 		if(1) {  // Lociterm: share link
-			let locihref = `${document.location.href}?host=${game.host}&port=${game.port}`
+			let locihref = `${document.location.origin}${document.location.pathname}?host=${game.host}&port=${game.port}`
+			if(game.ssl) {
+				locihref += `&ssl=1`
+			}
 			l = this.connect_link("LociTerm",locihref,"");
 			cdiv.appendChild(l);
 		}
