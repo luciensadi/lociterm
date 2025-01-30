@@ -153,15 +153,16 @@ class LociTerm {
 			navigator.vibrate([50,100,150]);
 		});
 
-		try { 
-			try{
-				this.reconnect_key = JSON.parse(sessionStorage.getItem("reconnect_key"));
-			} catch {
-				this.reconnect_key = JSON.parse(localStorage.getItem("reconnect_key"));
-			}
-		} catch {
-			this.reconnect_key = {};
+		let rk;
+		if( (rk = sessionStorage.getItem("reconnect_key")) !== null ) {
+			this.reconnect_key = JSON.parse(rk);
+		} else if( (rk = localStorage.getItem("reconnect_key")) !== null ) {
+			this.reconnect_key = JSON.parse(rk);
+		} else {
+			this.reconnect_key = "";
 		}
+
+
 		this.autoreconnect = true;
 		this.reconnect_delay = 0;
 		this.serverhello = "";

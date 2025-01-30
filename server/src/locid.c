@@ -567,7 +567,7 @@ int main(int argc, char **argv) {
 	mount->origin_protocol = LWSMPRO_FILE;
 	mount->def = config->default_doc;
 	mount->extra_mimetypes = extra_mimetypes();
-	mount->cache_max_age = 604800;
+	mount->cache_max_age = 86400;
 	mount->cache_reusable = 1;
 	mount->cache_revalidate = 1;
 	mount->cache_intermediaries = 1;

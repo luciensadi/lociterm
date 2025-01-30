@@ -115,7 +115,9 @@ void scanner_main(uv_timer_t *handle) {
 
 	if(tbd == NULL) {
 		tbd = scanner_tbd_list();
-		locid_log("Scanner found %d games to refresh.",g_list_length(tbd));
+		if(g_list_length(tbd) != 0) {
+			locid_log("Scanner found %d games to refresh.",g_list_length(tbd));
+		}
 	}
 
 	/* dispatch some of the hosts on the tbd list. */
@@ -134,7 +136,7 @@ void scanner_main(uv_timer_t *handle) {
 			g_list_length(tbd), scan_batch_delay
 		);
 	} else {
-		locid_log("Scanner dispatch complete.");
+		locid_debug(DEBUG_SCAN,NULL,"Scanner dispatch complete.");
 	}
 	uv_timer_again(handle);
 
@@ -241,7 +243,7 @@ void scanner_finalize(proxy_conn_t *pc) {
 
 	if(!(pc && pc->scanner)) return;
 
-	locid_info(pc,"Host %s %d %s is %s",
+	locid_info(pc,"Scanned game %s %d %s is %s",
 		pc->scanner->host,
 		pc->scanner->port,
 		(pc->scanner->ssl)?"SSL":"TCP",
