@@ -59,6 +59,7 @@ game_conn_t *new_game_conn(void) {
 	n->game_telnet = NULL;
 	n->uuid = g_uuid_string_random();
 	n->ttype_state = 0;
+	n->hostname = NULL;
 
 	n->ios = iostat_new();
 
@@ -91,6 +92,11 @@ void free_game_conn(game_conn_t *f) {
 	if(f->game_telnet) {
 		telnet_free(f->game_telnet);
 		f->game_telnet = NULL;
+	}
+
+	if(f->hostname) {
+		free(f->hostname);
+		f->hostname = NULL;
 	}
 
 	if(f->uuid) g_free(f->uuid);

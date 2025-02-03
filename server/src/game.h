@@ -35,6 +35,7 @@ typedef struct game_conn {
 	GQueue *game_q;					/* Game side data queue */
 	telnet_t *game_telnet;			/* telnet protocol tracker */
 	gchar *uuid;					/* reconnect key for this game connection. */
+	char *hostname;					/* for consistency with client */
 
 	struct iostat_data *ios;		/* iostat structure for bytes in/out */
 

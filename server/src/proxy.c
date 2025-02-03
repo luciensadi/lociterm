@@ -487,3 +487,28 @@ int loci_proxy_watchdog(proxy_conn_t *pc) {
 	return(0);
 
 }
+
+void loci_proxy_log_status(void) {
+
+	GList *l;
+	proxy_conn_t *pc;
+
+	locid_log("USR1 There are %d active proxy sessions.",g_list_length(proxyconns));
+	for(l = proxyconns;l;l=l->next) {
+		pc = (proxy_conn_t *)(l->data);
+		if(pc->client && pc->game) {
+			locid_log("USR1 [%d] %s (%s) -> %s (%s)",
+				pc->id,
+				(pc->client->hostname)?(pc->client->hostname):"NONE",
+				get_proxy_state_str(get_client_state(pc)),
+				(pc->game->hostname)?(pc->game->hostname):"NONE",
+				get_proxy_state_str(get_game_state(pc))
+			);
+		} else {
+			locid_log("USR1 [%d] (incomplete)",pc->id);
+		}
+	}
+
+
+
+}

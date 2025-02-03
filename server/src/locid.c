@@ -84,8 +84,14 @@ void signal_callback(uv_signal_t *watcher, int sig) {
 		case SIGINT:
 		case SIGHUP:
 			sigint_handler(sig);
+			break;
 		case SIGCHLD:
 			sigchld_handler(sig);
+			break;
+		case SIGUSR1:
+		case SIGUSR2:
+			loci_proxy_log_status();
+			break;
 		default:
 			break;
 	}
@@ -107,6 +113,10 @@ void signals_init(uv_loop_t *uvloop) {
 	static uv_signal_t sigchld_h;
 	uv_signal_init(uvloop, &sigchld_h);
 	uv_signal_start(&sigchld_h, signal_callback, SIGCHLD);
+
+	static uv_signal_t sigusr1_h;
+	uv_signal_init(uvloop, &sigusr1_h);
+	uv_signal_start(&sigusr1_h, signal_callback, SIGUSR1);
 
 	return;
 }

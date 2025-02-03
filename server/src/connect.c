@@ -218,6 +218,9 @@ int loci_connect_to_game_host(proxy_conn_t *pc, char *hostname, int port, int ss
 		pc->game->request_mssp = 1;
 	}
 
+	if(pc->game->hostname) free(pc->game->hostname);
+	pc->game->hostname = strdup(hostname);
+
 	/* lws example code likes to clear out structures before use */
 	memset(&info, 0, sizeof(info));
 

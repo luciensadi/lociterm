@@ -128,4 +128,5 @@ void loci_game_shutdown(proxy_conn_t *pc);
 int loci_proxy_watchdog(proxy_conn_t *pc);
 void loci_proxy_shutdown(proxy_conn_t *pc);
 void free_proxyconns(void);
+void loci_proxy_log_status(void);
 #endif /* LO_PROXY_H */

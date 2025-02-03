@@ -635,11 +635,15 @@ json_object *game_db_get_server_list(void) {
 				"FROM GAMEDB AS g "
 				"LEFT JOIN MSSP AS m on g.ID == m.GAME "
 				"WHERE "
-				"(STATUS IS %d) "
+					"(STATUS IS %d) "
+					"AND (json_extract(m.mssp,'$.NAME') collate nocase "
+						"NOT IN ('mygame','none') "
+					") "
 				"GROUP BY g.ID "
 				"ORDER BY "
 					"DEFAULT_GAME DESC, "
 					"UPDATED DESC, "
+					"(LAST_MSSP IS NULL) asc, "
 					"LAST_CONNECTION DESC "
 			");",
 			config->mssp_recently_updated,
