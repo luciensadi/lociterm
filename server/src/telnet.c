@@ -273,12 +273,13 @@ void loci_environment_update(proxy_conn_t *pc, int type, char *var, char *value)
 void loci_telnet_send_naws(telnet_t *telnet, int width, int height) {
 
 	char encoding[4];
+	if (!telnet) return;
 
 	encoding[0]=width>>8;
 	encoding[1]=width&0xFF;
 	encoding[2]=height>>8;
 	encoding[3]=height&0xFF;
-	
+
 	telnet_begin_sb(telnet,TELNET_TELOPT_NAWS);
 	telnet_send(telnet,encoding,sizeof(encoding));
 	telnet_finish_sb(telnet);
