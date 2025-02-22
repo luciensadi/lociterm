@@ -496,7 +496,7 @@ int main(int argc, char **argv) {
 	mount->cache_intermediaries = 1;
 	/* this does NOT mean 'do not cache', it means revalidate first. */
 	/* It also doesn't appear to be in libwebsockets v4.3-stable. */
-	mount->cache_no = 1;  
+	// mount->cache_no = 1;  
 
 	/* Enable permessage deflate extension */
 	static const struct lws_extension extensions[] = {
