@@ -81,11 +81,16 @@ class NerfBar {
 			this.lociterm.menuhandler.done();
 		});
 
+		// This is the primary command dispatch routing for the nerfbar.  You
+		// want to process the text in the nerfbar element, you inject an enter
+		// key event.
 		input.onkeydown = ((e)=>{
 			// e.keyCode==13 works in android IME.  e.code=="Enter" does not.
 			if((e.code == "Enter") || (e.keyCode == 13)) {
+				// add the pre-parsed value into the history.
 				this.history_add(e.srcElement.value);
-				this.lociterm.paste(e.srcElement.value+"\n");
+				let line = this.preparse(e.srcElement.value)
+				this.lociterm.paste(line+"\n");
 				e.srcElement.value = "";
 				// this.focus();
 				e.preventDefault();
@@ -246,6 +251,9 @@ class NerfBar {
 		return(ret);
 	}
 
+	// this is called to inject data into the nerfbar, as from a menu button or
+	// the wordstack.  Ensures that button/menu selections make it into the
+	// nerfbar history.
 	paste(data) {
 		if( data.endsWith('\n') === true ) {
 			// strip the \n before putting it in the nerfbar
@@ -278,6 +286,35 @@ class NerfBar {
 			this.focuselement.style.textShadow = "unset";
 			this.focuselement.placeholder = "Enter a command...";
 		}
+	}
+
+	// pre-process a line of input (presumably from the nerfbar) and modify it
+	// as needed.  Added to support "command chaining" via the ; character like
+	// some other clients do, because it turns out that whole families of MUDs
+	// don't support this basic operation in server.  
+	preparse ( cmd ) {
+
+		// could add a global 'disable' check here, and just return cmd as is.
+
+		let out = cmd;
+		// entire command is to be sent verbatim, no pre-processing.
+		if (cmd[0] == "\\") {
+			return(out.slice(1));
+		}
+	
+		// this would indicate a command to the client, a-la tintin, were you
+		// to support that.
+		if (cmd[0] == "#") {
+		}
+
+		// could probably put a local alias substitution here.  Probably there
+		// is whole subset of really crappy MUD servers that don't provide that
+		// either.
+
+		// turn unescaped ;'s directly into newlines.
+		out = out.replaceAll(";","\n");
+		out = out.replaceAll("\\\n",";");
+		return(out);
 	}
 
 }

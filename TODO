@@ -93,6 +93,8 @@
 * Server drop perms after launch?
 
 ------------- DONE! -----------------
++ add "command chaning" to nerfbar via the ; character.
+
 + The lociterm link in the about-game section isn't correct if the game was
   connected to with a set of &host= type parameters.  Fix it!
 

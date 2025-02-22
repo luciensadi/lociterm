@@ -783,9 +783,9 @@ class MenuHandler {
 		label.innerText = "Font Size";
 		var fontsize = document.createElement('input');
 		fontsize.setAttribute("type","range");
-		fontsize.setAttribute("min","10");
+		fontsize.setAttribute("min","6");
 		fontsize.setAttribute("max","24");
-		fontsize.setAttribute("step","0.125");
+		fontsize.setAttribute("step","0.0625");
 		initval = getComputedStyle(document.documentElement).getPropertyValue('--font-size');
 		fontsize.value = parseFloat(initval);
 		fontsize.oninput = (
