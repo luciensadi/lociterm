@@ -89,7 +89,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y gcc libglib2.0-dev exuberant-ctags openssl cmake npm libjson-c-dev libsqlite3-dev pkg-config
-        cd server
+        cd server/src
         make
 
     - name: Perform CodeQL Analysis
