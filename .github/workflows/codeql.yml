@@ -88,8 +88,6 @@ jobs:
       shell: bash
       run: |
         sudo apt update
-        sudo apt-cache show libwebsockets-dev
-        exit 1
         sudo apt install -y gcc libglib2.0-dev exuberant-ctags openssl cmake libjson-c-dev libsqlite3-dev pkg-config libwebsockets-dev
         cd server/src
         make
