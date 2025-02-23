@@ -295,6 +295,7 @@ class NerfBar {
 	preparse ( cmd ) {
 
 		// could add a global 'disable' check here, and just return cmd as is.
+		return(cmd);
 
 		let out = cmd;
 		// entire command is to be sent verbatim, no pre-processing.
