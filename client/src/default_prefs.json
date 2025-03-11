@@ -1,0 +1,86 @@
+{
+	"ui": {
+		"themename": "LociTerm",
+		"fontSize": "16px",
+		"fingerSize": "8mm",
+		"background": "#000000"
+	},
+	"menu": {
+		"themename": "cardinal",
+		"fade": 0.5,
+		"bgridAnchor": "tr",
+		"menusideAnchor": "br"
+	},
+	"nerf": {
+		"enabled": false,
+		"chaining": false
+	},
+	"crtoptions": {
+		"enabled": false,
+		"monotone": {
+			"enabled": true,
+			"saturation": 0.0,
+			"red": 0.2,
+			"green": 1.0,
+			"blue": 0.4,
+			"exponent": 0.8,
+			"offset": 0.02
+		},
+		"scanline": true,
+		"dotstretch": true,
+		"bloom": {
+			"enabled": true,
+			"stdDeviation": 5,
+			"bloom": 1.0,
+			"beam": 1.0
+		},
+		"barrel": {
+			"enabled": true,
+			"showfilter": false,
+			"exponent": 1.8,
+			"scale": 64
+		},
+		"saturate": 1.0,
+		"brightness": 1.0,
+		"contrast": 1.0,
+		"hue_rotate": 0
+	},
+	"xtermoptions": {
+		"drawBoldTextInBrightColors": 1,
+		"minimumContrastRatio": 1.4,
+		"bellStyle": "sound",
+		"fontFamily": "LOFont,courier",
+		"fontSize": 16,
+		"cursorBlink": true,
+		"cursorStyle": "block",
+		"cursorInactiveStyle": "outline",
+		"screenReaderMode": true,
+		"scrollback": 1000,
+		"scrollOnUserInput": true,
+		"theme": {
+			"foreground": "#e4e4e4",
+			"background": "#000000",
+			"cursor": "#e4e4e4",
+			"cursorAccent": "#ffffff",
+
+			"black": "#000000",
+			"red": "#fd233e",
+			"green": "#1cbd30",
+			"yellow": "#b4a543",
+			"blue": "#7575ff",
+			"magenta": "#ea5685",
+			"cyan": "#28cdcd",
+			"white": "#e4e4e4",
+
+			"brightBlack": "#709080",
+			"brightRed": "#ff566e",
+			"brightGreen": "#5cff71",
+			"brightYellow": "#ffffb4",
+			"brightBlue": "#4ea0e4",
+			"brightMagenta": "#ff95db",
+			"brightCyan": "#87e4e4",
+			"brightWhite": "#ffffff"
+		}
+	}
+}
+

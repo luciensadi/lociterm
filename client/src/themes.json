@@ -1,26 +1,26 @@
 [
 	{
 		"name": "LociTerm",
-		"fontsize": "16px",
-		"fingersize": "8mm",
-		"nerfbar": "false",
-		"background": "#000000",
+		"ui": {
+			"background": "#000000"
+		},
 		"crtoptions": {
 			"enabled": false
 		},
 		"xtermoptions": {
 			"drawBoldTextInBrightColors": 1,
 			"minimumContrastRatio": 1.4,
-			"bellStyle": "sound",
-			"fontSize": "16",
 			"fontFamily": "LOFont,courier",
 			"cursorBlink": true,
 			"cursorStyle": "block",
 			"cursorInactiveStyle": "outline",
-			"screenReaderMode": true,
-			"scrollback": 1000,
 			"scrollOnUserInput": true,
 			"theme": {
+				"foreground": "#e4e4e4",
+				"background": "#000000",
+				"cursor": "#e4e4e4",
+				"cursorAccent": "#ffffff",
+
 				"black": "#000000",
 				"red": "#fd233e",
 				"green": "#1cbd30",
@@ -43,16 +43,12 @@
 	},
 	{
 		"name": "LociTerm-Light",
-		"fontsize": "16px",
-		"fingersize": "8mm",
-		"nerfbar": "false",
-		"background": "#d8d6c6",
+		"ui": {
+			"background": "#d8d6c6"
+		},
 		"xtermoptions": {
-			"bellStyle": "sound",
-			"fontSize": "16",
 			"fontFamily": "LOFont,courier",
 			"cursorBlink": true,
-			"screenReaderMode": true,
 			"scrollback": 1000,
 			"scrollOnUserInput": true,
 			"theme": {
@@ -87,16 +83,12 @@
 	},
 	{
 		"name": "Dyslexic",
-		"fontSize": "16px",
-		"fingersize": "8mm",
-		"nerfbar": "false",
-		"background": "#101010",
+		"ui": {
+			"background": "#101010"
+		},
 		"xtermoptions": {
-			"bellStyle": "sound",
-			"fontSize": "16",
 			"fontFamily": "Dyslexic,LOFont,courier",
 			"cursorBlink": true,
-			"screenReaderMode": true,
 			"scrollback": 1000,
 			"scrollOnUserInput": true,
 			"minimumContrastRatio": 4.5,
@@ -130,14 +122,10 @@
 	},
 	{
 		"name": "XTerm",
-		"fontSize": "16px",
 		"xtermoptions": {
-			"fontSize": 16,
 			"fontFamily": "courier, LOFont, monospace",
 			"bellStyle": "sound",
 			"cursorBlink": true,
-			"screenReaderMode": true,
-			"scrollback": 1000,
 			"scrollOnUserInput": true,
 			"theme": {
 			}
@@ -148,15 +136,13 @@
 	},
 	{
 		"name": "ANSI-VGA",
-		"fontSize": "16px",
-		"background": "#000000",
+		"ui": {
+			"background": "#000000"
+		},
 		"xtermoptions": {
-			"fontSize": 16,
 			"fontFamily": "Courier New, LOFont, monospace",
 			"bellStyle": "sound",
 			"cursorBlink": true,
-			"screenReaderMode": true,
-			"scrollback": 1000,
 			"scrollOnUserInput": true,
 			"theme": {
 			}
@@ -172,13 +158,10 @@
 			"drawBoldTextInBrightColors": 1,
 			"minimumContrastRatio": 1,
 			"bellStyle": "sound",
-			"fontSize": "16",
 			"fontFamily": "LOFont,courier",
 			"cursorBlink": true,
 			"cursorStyle": "block",
 			"cursorInactiveStyle": "outline",
-			"screenReaderMode": true,
-			"scrollback": 1000,
 			"scrollOnUserInput": true,
 			"theme": {
 				"black": "#000000",
@@ -203,14 +186,13 @@
 	},
 	{
 		"name": "Green",
-		"fontSize": "24px",
+		"ui": {
+			"background": "black"
+		},
 		"xtermoptions": {
 			"bellStyle": "sound",
 			"fontFamily": "VT323, LOFont",
-			"fontSize": "24",
 			"cursorBlink": true,
-			"screenReaderMode": true,
-			"scrollback": 1000,
 			"scrollOnUserInput": true,
 			"theme": {
 				"foreground": "#2de55b",
@@ -243,18 +225,19 @@
 			"monotone": {
 				"enabled": true
 			},
-			"hue_rotate": "0"
+			"hue_rotate": "0",
+			"scanline": true
 		}
 	},
 	{
 		"name": "Amber",
+		"ui": {
+			"background": "black"
+		},
 		"xtermoptions": {
 			"bellStyle": "sound",
 			"fontFamily": "VT323, LOFont",
-			"fontSize": 24,
 			"cursorBlink": true,
-			"screenReaderMode": true,
-			"scrollback": 1000,
 			"scrollOnUserInput": true,
 			"theme": {
 				"foreground": "#e5a72d",
@@ -287,22 +270,20 @@
 			"monotone": {
 				"enabled": true
 			},
-			"hue_rotate": "-90"
+			"hue_rotate": "-90",
+			"scanline": true
 		}
 	},
 	{
 		"name": "c64",
-		"fontsize": "16px",
-		"fingersize": "8mm",
-		"background": "#40318D",
+		"ui": {
+			"background": "#7869C4"
+		},
 		"xtermoptions": {
 			"minimumContrastRatio": 2,
 			"bellStyle": "sound",
-			"fontSize": "16",
 			"fontFamily": "Commodore, LOFont, Noto Emoji",
 			"cursorBlink": true,
-			"screenReaderMode": true,
-			"scrollback": 1000,
 			"scrollOnUserInput": true,
 			"theme": {
 				"cursor": "#7869C4",
@@ -333,15 +314,18 @@
 			"monotone": {
 				"enabled": false
 			},
-			"bubble": {
-				"scale": 1.0
+			"barrel": {
+				"enabled": true,
+				"scale": 20
 			},
 			"bloom": {
+				"enabled": true,
 				"stdDeviation": 1,
-				"bloom": 0.5,
+				"bloom": -1,
 				"beam": 1.5
 			},
-			"hue_rotate": "0"
+			"hue_rotate": "0",
+			"scanline": false
 		}
 	}
 ]

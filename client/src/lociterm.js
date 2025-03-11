@@ -38,6 +38,8 @@ import { WordStack } from './wordstack.js';
 import { GaEorHandler } from './gaeor.js';
 import { HotkeyHandler } from './hotkey.js';
 import { CpDecoder } from './cpdecoder.js';
+import * as ObjDeep from './objdeep.js';
+import { LociPreferences } from './lociprefs.js';
 
 // The command codes MUST MATCH the defines in server/client.h !
 const Command = {
@@ -97,7 +99,7 @@ class LociTerm {
 
 		// set variables.
 		this.mydiv = mydiv;
-		
+
 		this.lociThemes = lociThemes;
 		this.terminal = new Terminal({
 			// Unicode11Addon is a proposed api?? 
@@ -114,7 +116,7 @@ class LociTerm {
 		this.login = { requested: 0, name: "", password: "", remember: 1 };
 		this.socket = undefined;
 		this.reconnect_key = "";
-		this.themeLoaded = 0;
+		this.themeLoaded = true;  // JSJ TODO remove
 		this.url = "";
 		this.nerfbar = new NerfBar(this,"nerfbar");
 		this.echo_mode = 0;
@@ -122,7 +124,6 @@ class LociTerm {
 		this.crtfilter = new CRTFilter("crtfilter");
 		this.encoding = "utf-8";
 		this.cpdecoder = new CpDecoder();
-
 		// code. 
 		this.terminal.loadAddon(this.unicode11Addon);
 		this.terminal.unicode.activeVersion = '11';
@@ -151,6 +152,7 @@ class LociTerm {
 			this.terminal.audio.play();
 			// This will shake an android phone!
 			navigator.vibrate([50,100,150]);
+			debugger
 		});
 
 		let rk;
@@ -183,11 +185,12 @@ class LociTerm {
 
 		// create hotkey menu after menuhandler is installed
 		this.hotkey.createEditorDiv();
+		this.pref = new LociPreferences(this);
 
 		this.connectgame = new ConnectGame(this,this.menuhandler);
-		this.loadDefaultTheme();
 		this.terminal.open(mydiv);
 		this.fitAddon.fit();
+		// this.loadDefaultTheme();  TODO remove me
 		this.doWindowResize();
 		this.resetTerm();
 		this.focus();
@@ -437,10 +440,10 @@ class LociTerm {
 			}
 		}
 
-		if(this.themeLoaded == false) {
+		if(this.themeLoaded === false) {
 			console.log("Delaying connection for themes to load...");
 			this.terminal.write(`\r`);
-			setTimeout(() => this.connect(url) , 100.0); 
+			setTimeout(() => this.connect(url) , 250.0); 
 			return;
 		}
 
@@ -758,6 +761,7 @@ class LociTerm {
 	}
 
 	loadDefaultTheme() {
+		return;
 		let defaultTheme = this.lociThemes[0];
 		defaultTheme.locithemeno = 0;
 		let defaultThemeName = localStorage.getItem("locithemename");
@@ -770,6 +774,17 @@ class LociTerm {
 			}
 		}
 
+		/* This will load up the dumped 'currentTheme' object.  It is here so
+		 * that any of these older individual settings will override the
+		 * currentTheme values. */
+		let ctj = null;
+		if( (ctj = localStorage.getItem("currentTheme")) != null) {
+			if(ctj.xtermoptions) {
+				delete ctj.xtermoptions.theme;
+			}
+			defaultTheme = ObjDeep.merge(JSON.parse(ctj));
+		}
+
 		// these should probably be in an array to be looped over...
 		let fingerSize = localStorage.getItem("fingerSize");
 		if (fingerSize != undefined) {
@@ -777,8 +792,8 @@ class LociTerm {
 		}
 		let fontSize = localStorage.getItem("fontSize");
 		if (fontSize != undefined) {
-			defaultTheme.fontSize = fontSize;
-			defaultTheme.xtermoptions.fontSize = parseFloat(fontSize);
+			defaultTheme.fontSize = fontSize;  /* ack, camelcase to match xtermoptions */
+			//defaultTheme.xtermoptions.fontSize = parseFloat(fontSize);
 		}
 		let menuFade = localStorage.getItem("menuFade");
 		if (menuFade != undefined) {
@@ -789,6 +804,10 @@ class LociTerm {
 			defaultTheme.nerfbar = nerfbar;
 		} else {
 			defaultTheme.nerfbar = "false";
+		}
+		if(defaultTheme.nerf === undefined) {
+			defaultTheme.nerf = {};
+			defaultTheme.nerf.commandchains = "false";
 		}
 
 		let readermode = localStorage.getItem("screenReaderMode");
@@ -815,6 +834,7 @@ class LociTerm {
 		this.crtfilter.load();
 		defaultTheme.crtoptions = this.crtfilter.opts;
 
+		this.currentTheme = structuredClone(defaultTheme);
 		this.applyTheme(defaultTheme);
 
 	}
@@ -828,8 +848,9 @@ class LociTerm {
 	}
 
 	async applyTheme(theme) {
+		return;
 
-		this.themeLoaded = 0;
+		this.themeLoaded = false;
 		// Apply the lociterm specific theme items.  This should probably be
 		// some kind of loop.
 
@@ -865,40 +886,29 @@ class LociTerm {
 		}
 		if( (theme.xtermoptions != undefined) && (theme.xtermoptions.screenReaderMode != undefined)) {
 			localStorage.setItem("screenReaderMode",theme.xtermoptions.screenReaderMode);
-			let select = document.getElementById("reader-select");
-			if(select != undefined) {
-				select.checked = (theme.xtermoptions.screenReaderMode)?true:false;
-			} else {
-				select.checked = true;
-			}
 		}
 
-		if(theme.bgridAnchor != undefined) {
-			localStorage.setItem("bgridAnchor",theme.bgridAnchor);
-			if( theme.bgridAnchor[0] == 't' ) {
+		if(theme.menu?.bgridAnchor != undefined) {
+			let anchor = theme.menu.bgridAnchor;
+			if( anchor[0] == 't' ) {
 				document.documentElement.style.setProperty('--bgridAnchor-top', "0");
 				document.documentElement.style.setProperty('--bgridAnchor-bottom', 'unset');
 			} else {
 				document.documentElement.style.setProperty('--bgridAnchor-top', 'unset');
 				document.documentElement.style.setProperty('--bgridAnchor-bottom', "2em");
 			}
-			if( theme.bgridAnchor[1] == 'l' ) {
+			if( anchor[1] == 'l' ) {
 				document.documentElement.style.setProperty('--bgridAnchor-left', "0");
 				document.documentElement.style.setProperty('--bgridAnchor-right', 'uset');
 			} else {
 				document.documentElement.style.setProperty('--bgridAnchor-left', 'unset');
 				document.documentElement.style.setProperty('--bgridAnchor-right', "0");
 			}
-			// Update the bgridAnchor selector
-			let select = document.getElementById("bgridAnchor-select");
-			if(select != undefined) {
-				select.value = theme.bgridAnchor;
-			}
 		}
 
-		if(theme.menusideAnchor != undefined) {
-			localStorage.setItem("menusideAnchor",theme.menusideAnchor);
-			if( theme.menusideAnchor[0] == 't' ) {
+		if(theme.menu?.menusideAnchor != undefined) {
+			let anchor = theme.menu.menusideAnchor;
+			if( anchor[0] == 't' ) {
 				document.documentElement.style.setProperty('--menuside-open-top', 0);
 				document.documentElement.style.setProperty('--menuside-open-bottom', 'unset');
 				document.documentElement.style.setProperty('--menuside-close-top', "-100%");
@@ -909,7 +919,7 @@ class LociTerm {
 				document.documentElement.style.setProperty('--menuside-close-top', 'unset');
 				document.documentElement.style.setProperty('--menuside-close-bottom', "-100%");
 			}
-			if( theme.menusideAnchor[1] == 'l' ) {
+			if( anchor[1] == 'l' ) {
 				document.documentElement.style.setProperty('--menuside-open-left', 0);
 				document.documentElement.style.setProperty('--menuside-open-right', 'unset');
 				document.documentElement.style.setProperty('--menuside-close-left', "-100%");
@@ -920,11 +930,6 @@ class LociTerm {
 				document.documentElement.style.setProperty('--menuside-close-left', 'unset');
 				document.documentElement.style.setProperty('--menuside-close-right', "-100%");
 			}
-			// Update the menusideAnchor selector
-			let select = document.getElementById("menusideAnchor-select");
-			if(select != undefined) {
-				select.value = theme.menusideAnchor;
-			}
 		}
 
 		// Update the theme selector
@@ -932,6 +937,19 @@ class LociTerm {
 			let select = document.getElementById("theme-select");
 			if(select != undefined) {
 				select.value = theme.locithemeno;
+			}
+		}
+
+		if(theme.name != undefined) {
+			localStorage.setItem("locithemename",theme.name);
+			this.themeName = theme.name;
+		}
+	
+		// theme menu items
+		if(theme.menu != undefined) {
+			// Update the menu them selector
+			if(theme.menu.themename != undefined) {
+				this.menuhandler.applyMenuName(theme.menu.themename);
 			}
 		}
 
@@ -948,6 +966,27 @@ class LociTerm {
 				}
 			}
 		}
+
+		if(theme.crtoptions != undefined) {
+			this.crtfilter.update(this.crtfilter.defaultopts);
+			this.crtfilter.update(theme.crtoptions);
+			this.crtfilter.save();
+		}
+
+		// merge this apply delta to the general prefs 
+		this.currentTheme = ObjDeep.merge(this.currentTheme,theme);
+
+		// save the general prefs structure WITHOUT the xtermoptions.theme
+		// information.  The selectable themes may not contain definitions for
+		// all of the different colors, and this prevents saving a non-xterm
+		// default.
+		let saveme = structuredClone(this.currentTheme);
+		if(saveme.xtermoptions !== undefined) {
+			delete saveme.xtermoptions.theme;
+		};
+		localStorage.setItem("currentTheme",
+			JSON.stringify(saveme)
+		);
 
 		// Apply the xtermjs specific theme items.
 		if(theme.xtermoptions != undefined) {
@@ -966,22 +1005,30 @@ class LociTerm {
 				await document.fonts.ready;
 			}
 			this.terminal.options = Object.assign(theme.xtermoptions);
-			this.terminal.refresh(0,this.terminal.rows-1);
-			this.fitAddon.fit();
-			this.doWindowResize();
-		}
-		if(theme.name != undefined) {
-			localStorage.setItem("locithemename",theme.name);
-			this.themeName = theme.name;
-		}
-		
-		if(theme.crtoptions != undefined) {
-			this.crtfilter.update(this.crtfilter.defaultopts);
-			this.crtfilter.update(theme.crtoptions);
-			this.crtfilter.save();
 		}
 
-		this.themeLoaded = 1;
+		// there is some issue with xterm.js and the fitAddon.fit() function
+		// not being able to return the correct value until what I'm assuming
+		// is an animation frame or two have been rendered under any new font
+		// settings.  With the old dom based xterm.js, that await up there
+		// seemed like it took care of the problem, but moving to the canvas
+		// version seems to have renewed the issue.  I can't find any status
+		// variable in xterm.js that lets me know when it has 'settled down'
+		// enough that fitAddon.fit() will return its final answer, so I'm
+		// retriggering it here after a few arbitrary ms to try and get things
+		// right.  There's also a delay in connect() to wait on the
+		// this.themeLoaded value to go to true, so that the server doesn't get
+		// bogus window sizes reported up to it either.  This is a hack.
+		this.terminal.refresh(0,this.terminal.rows-1);
+		setTimeout( 
+			()=>{ 
+				this.fitAddon.fit(); 
+				this.doWindowResize(); 
+				this.themeLoaded = true;
+			},
+			100.0
+		);
+
 	}
 
 	debug() {

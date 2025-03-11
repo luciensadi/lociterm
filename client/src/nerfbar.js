@@ -190,25 +190,27 @@ class NerfBar {
 
 	// make the nerfbar appear.
 	open() {
+		if( this.nerfstate === "active" ) return;
 		this.mydiv.style.display= 
 			getComputedStyle(document.documentElement).getPropertyValue('--nerfbar-open-display');
-		this.lociterm.fitAddon.fit();
-		this.lociterm.doWindowResize();
 		this.nerfstate = "active";
 		document.documentElement.style.setProperty('--nerfbar-offsetHeight', `${this.mydiv.offsetHeight}px`);
 		this.lociterm.keyboardEnable(false);
+		this.lociterm.fitAddon.fit();
+		this.lociterm.onWindowResize();
 	}
 
 	// make the nerfbar DIE DIE DIE. I hate you, nerfbar.
 	close() {
+		if( this.nerfstate === "inactive" ) return;
 		this.mydiv.style.display=
 			getComputedStyle(document.documentElement).getPropertyValue('--nerfbar-close-display');
-		this.lociterm.fitAddon.fit();
-		this.lociterm.doWindowResize();
 		this.nerfstate = "inactive";
 		this.mydiv.style.opacity = "";
 		document.documentElement.style.setProperty('--nerfbar-offsetHeight', `${this.mydiv.offsetHeight}px`);
 		this.lociterm.keyboardEnable(true);
+		this.lociterm.fitAddon.fit();
+		this.lociterm.onWindowResize();
 	}
 
 	nofade() {
@@ -295,7 +297,9 @@ class NerfBar {
 	preparse ( cmd ) {
 
 		// could add a global 'disable' check here, and just return cmd as is.
-		return(cmd);
+		if(this.lociterm.pref.get("nerf.chaining") !== true ) {
+			return(cmd);
+		}
 
 		let out = cmd;
 		// entire command is to be sent verbatim, no pre-processing.

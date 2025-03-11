@@ -40,8 +40,12 @@
 					"open": "sys_game_select"
 				},
 				{
-					"label": "Theme",
+					"label": "User Interface",
 					"open": "sys_settings"
+				},
+				{
+					"label": "Terminal",
+					"open": "sys_termsettings"
 				},
 				{
 					"label": "CRT Filter",

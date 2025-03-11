@@ -32,7 +32,6 @@ import lociThemes from './themes.json';
 
 import { LociTerm } from './lociterm.js';
 
-
 // lociTermBegin();
 
 const terminal = new LociTerm(

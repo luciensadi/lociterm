@@ -47,6 +47,7 @@ class MenuHandler {
 		this.openwindow = [];
 		this.openHandler = new Map();
 		this.menuThemes = this.consolodateMenuThemes();
+		this.menuThemename = this.menuThemes[0];
 
 		// make the menuhandler in the menuhandler div that is already on the
 		// page, or if that doesn't exist, create it under this lociterm.  Note
@@ -58,9 +59,10 @@ class MenuHandler {
 			this.lociterm.mydiv.appendChild(this.mydiv);
 		}
 		this.mydiv.classList.add('menuhandler');
-		this.mydiv.appendChild(this.create_custom_menus(LoMenu));
+		this.mydiv.appendChild(this.create_custom_menus(this.menuThemename));
 		this.mydiv.appendChild(this.create_loginbox());
 		this.mydiv.appendChild(this.create_settings());
+		this.mydiv.appendChild(this.create_termsettings());
 		this.mydiv.appendChild(this.create_filters());
 		this.mydiv.appendChild(this.create_about());
 		this.mydiv.appendChild(this.create_disclaimer());
@@ -70,10 +72,6 @@ class MenuHandler {
 		// dont loadLogin until lociterm has loaded connectgame
 		//this.loadLogin();
 
-		let menuthemename = localStorage.getItem("menuthemename");
-		if( menuthemename !== undefined) {
-			this.applyMenuName(menuthemename);
-		}
 	}
 
 	consolodateMenuThemes() {
@@ -82,7 +80,7 @@ class MenuHandler {
 		themes.push(DiagonalMenu);
 		themes.push(TelnetMenu);
 		themes.push(LoMenu);
-		themes.push({ name: "None" });
+		themes.push({ name: "none", label: "None" });
 		return(themes);
 	}
 
@@ -442,7 +440,7 @@ class MenuHandler {
 
 
 	// Build the select box for choosing a theme from the themes array.
-	create_generic_selector(id, label, themes, oninput) {
+	create_generic_selector(id, label, themes, initval, oninput) {
 
 		let l;
 		let cdiv;
@@ -462,6 +460,7 @@ class MenuHandler {
 		l.setAttribute("name",id);
 		l.id = id;
 		l.oninput = oninput;
+		let sel =l; 
 
 		divstack.push(l);
 		cdiv = l;
@@ -477,6 +476,8 @@ class MenuHandler {
 			}
 		}
 
+		sel.value = `${initval}`;
+
 		divstack.pop(); 
 		cdiv = divstack[divstack.length-1];
 		return(main);
@@ -484,7 +485,7 @@ class MenuHandler {
 	}
 
 	// a generic corner selector
-	create_anchor_selector(named="",labeled="",oninput="") {
+	create_anchor_selector(named="",labeled="",initval="tl",oninput="") {
 		let field;
 		let label;
 		let select;
@@ -512,6 +513,7 @@ class MenuHandler {
 			l.innerText = optlist[value];
 			select.appendChild(l);
 		}
+		select.value = initval;
 		return(field);
 
 	}
@@ -615,13 +617,13 @@ class MenuHandler {
 		l.addEventListener('change',((e)=>{this.saveLogin()}));
 
 		// add a checkbox.
-		l = this.create_generic_checkbox("remember","Remember Me",
+		l = this.create_generic_checkbox("remember","Remember Me",true,
 			((e) => {this.saveLogin()})
 		);
 		cdiv.appendChild(l);
 
 		// add a checkbox.
-		l = this.create_generic_checkbox("autologin","Auto Login",
+		l = this.create_generic_checkbox("autologin","Auto Login",true,
 			((e) => {this.saveLogin()})
 		);
 		cdiv.appendChild(l);
@@ -736,7 +738,7 @@ class MenuHandler {
 		//localStorage.setItem("credshadow",JSON.stringify(fullset));
 	}
 
-	create_settings() {
+	create_settings(menuname="sys_settings") {
 		let overlay;
 		let box;
 		let field;
@@ -748,143 +750,88 @@ class MenuHandler {
 		let l;
 		let nerf;
 
-		let menuname = "sys_settings";
+		let handle = this.create_generic_live_window(
+			menuname,
+			"UI Settings",
+			()=>this.create_settings(menuname), // required fn pointer back to this function.
+			"" // whatever is the default for onclose.
+		);
 
-		overlay = document.createElement('div');
-		overlay.id=menuname;
-		overlay.classList.add('overlay');
+		if(handle.wait) {
+			return(handle.overlay);
+		}
 
-		box = document.createElement('div');
-		overlay.appendChild(box);
-		box.classList.add('menupop');
+		box = handle.content;
 
-		l = document.createElement('span');
-		box.appendChild(l);
-		l.onclick = (()=>this.done("sys_settings"));
-		l.classList.add('close');
-		l.title = "Close sys_loginbox";
-		l.innerText = "×";
+		let menuitem;
+		menuitem = this.menuThemes.findIndex(
+			(x)=>x.name == this.lociterm.pref.get("menu.themename")
+		);
 
 		l = this.create_generic_selector(
-			"theme-select",
-			"Theme",
-			this.lociterm.lociThemes,
-			((e)=>{
-				this.lociterm.applyThemeNo(e.srcElement.value); 
+			`${menuname}_select`,
+			"Menu Style",
+			this.menuThemes,
+			menuitem,
+			((e)=>{ 
+				this.lociterm.pref.set("menu.themename",this.menuThemes[e.srcElement.value].name);
 			})
 		);
 		box.appendChild(l);
 
-		// a range slider for setting the font size css
-		field = document.createElement('div');
-		box.appendChild(field);
-		label = document.createElement('label');
-		field.appendChild(label);
-		label.innerText = "Font Size";
-		var fontsize = document.createElement('input');
-		fontsize.setAttribute("type","range");
-		fontsize.setAttribute("min","6");
-		fontsize.setAttribute("max","24");
-		fontsize.setAttribute("step","0.0625");
-		initval = getComputedStyle(document.documentElement).getPropertyValue('--font-size');
-		fontsize.value = parseFloat(initval);
-		fontsize.oninput = (
-			()=> {
-				let themedelta = [];
-				themedelta.fontSize = fontsize.value+"px";
-				themedelta.xtermoptions =[];
-				themedelta.xtermoptions.fontSize =fontsize.value;
-				this.lociterm.applyTheme(themedelta);
+		// UI Font Size slider
+		l = this.create_generic_slider(
+			`${menuname}_uifont`,
+			`Text Size`,
+			6,24,0.0625,
+			parseFloat(this.lociterm.pref.get("ui.fontSize")),
+			(e)=> {
+				this.lociterm.pref.set("ui.fontSize",`${e.srcElement.value}px`);
 			}
 		);
-		label.appendChild(fontsize);
-
-		l = this.create_generic_selector(
-			"menu-select",
-			"Menu Style",
-			this.menuThemes,
-			((e)=>{ this.applyMenuNo(e.srcElement.value); })
+		box.appendChild(l);
+		
+		// UI Button Size slider
+		l = this.create_generic_slider(
+			`${menuname}_fingersize`,
+			`Button Size`,
+			5,15,0.125,
+			parseFloat(this.lociterm.pref.get("ui.fingerSize")),
+			(e)=> {
+				this.lociterm.pref.set("ui.fingerSize",`${e.srcElement.value}mm`);
+			}
+		);
+		box.appendChild(l);
+		
+		// UI Button Fade slider
+		l = this.create_generic_slider(
+			`${menuname}_menufade`,
+			`Button Fade`,
+			0.0,1.0,0.05,
+			this.lociterm.pref.get("menu.fade"),
+			(e)=> {
+				this.lociterm.pref.set("menu.fade",e.srcElement.value);
+			}
 		);
 		box.appendChild(l);
 
-
-		// a range slider for setting the finger size css
-		field = document.createElement('div');
-		box.appendChild(field);
-		label = document.createElement('label');
-		field.appendChild(label);
-		label.innerText = "Button Size";
-		var fingersize = document.createElement('input');
-		fingersize.setAttribute("type","range");
-		fingersize.setAttribute("min","5");
-		fingersize.setAttribute("max","15");
-		fingersize.setAttribute("step","0.125");
-		initval = getComputedStyle(document.documentElement).getPropertyValue('--finger-size');
-		fingersize.value = parseFloat(initval);
-		fingersize.oninput = (
-			()=> {
-				let themedelta = [];
-				themedelta.fingerSize = fingersize.value+"mm";
-				this.lociterm.applyTheme(themedelta);
-			}
-		);
-		label.appendChild(fingersize);
-
-		// a range slider for setting the grid fadeout
-		field = document.createElement('div');
-		box.appendChild(field);
-		label = document.createElement('label');
-		field.appendChild(label);
-		label.innerText = "Button Fade";
-		var menufade = document.createElement('input');
-		menufade.setAttribute("type","range");
-		menufade.setAttribute("min","0.0");
-		menufade.setAttribute("max","1.0");
-		menufade.setAttribute("step","0.05");
-		initval = getComputedStyle(document.documentElement).getPropertyValue('--menufade-hidden');
-		menufade.value = parseFloat(initval);
-		menufade.oninput = (
-			()=> {
-				let themedelta = [];
-				themedelta.menuFade = menufade.value;
-				this.lociterm.applyTheme(themedelta);
-			}
-		);
-		label.appendChild(menufade);
-
 		// a selector for Icon Anchor
-		field = this.create_anchor_selector("bgridAnchor-select","Button Grid",
+		field = this.create_anchor_selector(`${menuname}_bgridAnchor-select`,"Button Grid",
+			this.lociterm.pref.get("menu.bgridAnchor"),
 			((e)=>{
-				let themedelta = [];
-				themedelta.bgridAnchor = e.srcElement.value;
-				this.lociterm.applyTheme(themedelta);
+				this.lociterm.pref.set("menu.bgridAnchor",e.srcElement.value);
 			})
 		);
 		box.appendChild(field);
 
 		// a selector for sidemenu Anchor
-		field = this.create_anchor_selector("menusideAnchor-select","Menus",
+		field = this.create_anchor_selector(`${menuname}_menusideAnchor-select`,"Menus",
+			this.lociterm.pref.get("menu.menusideAnchor"),
 			((e)=>{
-				let themedelta = [];
-				themedelta.menusideAnchor = e.srcElement.value;
-				this.lociterm.applyTheme(themedelta);
+				this.lociterm.pref.set("menu.menusideAnchor",e.srcElement.value);
 			})
 		);
 		box.appendChild(field);
-
-		nerf = this.create_generic_checkbox("nerfbar-select","Line Mode",
-			((e)=>{
-				if(e.srcElement.checked == false) {
-					this.lociterm.nerfbar.close();
-				} else {
-					this.lociterm.nerfbar.open();
-				}
-				let themedelta = [];
-				themedelta.nerfbar = (e.srcElement.checked ? "true":"false")
-				this.lociterm.applyTheme(themedelta);
-			})
-		);
-		box.appendChild(nerf);
 
 		// A selector for screenreader hinting.  Its a good idea to leave the
 		// hints on by default, because a VI user is going to have a tougher
@@ -893,103 +840,259 @@ class MenuHandler {
 		// clickable links and ARIA screen reader hints at the same time.  It
 		// is *still* here because the tooling was already in place, and some
 		// slower web browsers might be sped up by leaving the hints off.
-
-		field = this.create_generic_checkbox("reader-select","Accessibility Hints",
+		field = this.create_generic_checkbox(
+			"reader-select",
+			"Accessibility Hints",
+			this.lociterm.pref.get("xtermoptions.screenReaderMode"),
 			((e)=>{
-				let themedelta = [];
-				themedelta.xtermoptions = {};
-				themedelta.xtermoptions.screenReaderMode = (e.srcElement.checked == true);
-				this.lociterm.applyTheme(themedelta);
+				this.lociterm.pref.set("xtermoptions.screenReaderMode",
+					e.srcElement.checked
+				);
 			})
 		);
 		box.appendChild(field);
 
-
 		return(overlay);
 	}
 
-	create_filters() {
+	// create a window that self-deletes and recreates itself every time it is
+	// requested to be opened.  Initial values of the widgets should come from
+	// this.lociterm.pref.get()
+	//
+	// Return value:
+	//
+	//	ret.wait = true  
+	//	Don't actually remake the widgets this time, the system might not have
+	//	all the data ready for that yet.
+	//
+	//	ret.overlay = the div that should be inserted somewhere in the
+	//	document.
+	//
+	//	ret.content = the div that should have the widgets appended to it.
+
+	create_generic_live_window(id="",named="",recreate="",onclose="") {
+		let ret = {};
+		ret.overlay = document.getElementById(id);
+		ret.content = null;
+		ret.wait = false;
+
+		if(ret.overlay == null) {
+			let divs = this.create_generic_window(
+				id,named,onclose
+			);
+			ret.overlay = divs[0]; /*this is horrible. */
+			ret.content = divs[1];
+			// set the openhandler to recreate this menu fresh each time.
+			this.openHandler.set(id,
+				(id)=>{recreate(id);}
+			);
+			if(this.lociterm.currentTheme == undefined) {
+				ret.wait = true;
+			}
+		} else {
+			// grab the div with the content.
+			ret.content = document.getElementById(`${id}_content`);
+			// whack any existing widgets in the window.
+			while(ret.content.children[0]!=undefined) {
+				ret.content.children[0].remove();
+			}
+		}
+		return(ret);
+	}
+
+	// The sys_termsettings pref editor window.  This is a generic live window
+	// that uses lociterm.currentTheme to rebuild its widgets fresh each time
+	// it is opened. This is yet another try at making my window's widgets
+	// reflect reality, because I'm really am not very good at this whole
+	// javascript/DOM thing yet!  All of menuhandler.js has been an iteritive
+	// learning experience for me.
+	// 
+	// -jsj Mon Feb 24 04:31:50 PM EST 2025
+	create_termsettings(menuname="sys_termsettings") {
+
+		let l;
+
+		let handle = this.create_generic_live_window(
+			menuname,
+			"Terminal Settings",
+			()=>this.create_termsettings(menuname), // required fn pointer back to this function.
+			"" // whatever is the default for onclose.
+		);
+
+		if(handle.wait) {
+			return(handle.overlay);
+		}
+
+		let win = handle.content;
+
+		let menuitem = this.lociterm.lociThemes.findIndex(
+			(x)=>x.name == this.lociterm.pref.get("ui.themename")
+		);
+
+		// Theme selector combo
+		l = this.create_generic_selector(
+			"theme-select",
+			"Theme",
+			this.lociterm.lociThemes,
+			menuitem,
+			((e)=>{
+				this.lociterm.pref.set("ui.themename",this.lociterm.lociThemes[e.srcElement.value].name)
+				// this close/open shuffle is because setting the themename can
+				// reset some of the other items in this window.  Closing and
+				// opening is akin to refresh.
+				this.close(menuname);
+				this.open(menuname);
+			})
+		);
+		win.appendChild(l);
+
+		// Terminal Font Size slider
+		l = this.create_generic_slider(
+			`${menuname}_termfont`,
+			`Text Size`,
+			6,24,0.0625,
+			parseFloat(this.lociterm.pref.get("xtermoptions.fontSize")),
+			(e)=> {
+				this.lociterm.pref.set("xtermoptions.fontSize",e.srcElement.value);
+			}
+		);
+		win.appendChild(l);
+
+		// Contrast Ratio slider
+		l = this.create_generic_slider(
+			`${menuname}_contrastratio`,
+			`Enhance Contrast`,
+			1,8,0.25,
+			this.lociterm.pref.get("xtermoptions.minimumContrastRatio"),
+			(e)=> {
+				this.lociterm.pref.set("xtermoptions.minimumContrastRatio",e.srcElement.value);
+			}
+		);
+		win.appendChild(l);
+
+		// Line Mode CheckBox
+		l = this.create_generic_checkbox(
+			`${menuname}_linemode`,
+			"Line Mode",
+			this.lociterm.pref.get("nerf.enabled"),
+			((e)=>{
+				this.lociterm.pref.set("nerf.enabled",e.srcElement.checked);
+				if(e.srcElement.checked == false) {
+					this.lociterm.nerfbar.close();
+				} else {
+					this.lociterm.nerfbar.open();
+				}
+			})
+		);
+		// the input is is children[0] of the generic checkbox.
+		win.appendChild(l);
+
+		// Command Chaining CheckBox
+		l = this.create_generic_checkbox(
+			`${menuname}_commandchains`,
+			"Command Chaining with ';'",
+			this.lociterm.pref.get("nerf.chaining"),
+			((e)=>{
+				this.lociterm.pref.set("nerf.chaining",e.srcElement.checked);
+			})
+		);
+		// the input is is children[0] of the generic checkbox.
+		win.appendChild(l);
+
+		// Codepage Combo
+		// Erase sends Backspace CheckBox
+
+		l = this.create_generic_button(
+			`${menuname}_reset`,
+			"Reset Terminal",
+			"submit",
+			((e)=>{
+				this.lociterm.terminal.reset();
+			})
+		);
+		win.appendChild(l);
+
+		return(handle.overlay);
+	}
+
+	create_filters(menuname="sys_filters") {
+		let l;
+
+		let handle = this.create_generic_live_window(
+			menuname,
+			"CRT Filters",
+			()=>this.create_filters(menuname), // required fn pointer back to this function.
+			"" // whatever is the default for onclose.
+		);
+
+		if(handle.wait) {
+			return(handle.overlay);
+		}
+
+		let win = handle.content;
+	
 		let item;
-		let menuname = "sys_filters";
-
-		let overlay = document.createElement('div');
-		overlay.id=menuname;
-		overlay.classList.add('overlay');
-
-		let box = document.createElement('div');
-		overlay.appendChild(box);
-		box.classList.add('menupop');
-
-		let l = document.createElement('span');
-		box.appendChild(l);
-		l.onclick = (()=> {
-			this.lociterm.crtfilter.save();
-			this.done("sys_filters")
-		});
-		l.classList.add('close');
-		l.title = "Close sys_filters";
-		l.innerText = "×";
 
 		item = document.createElement('label');
 		item.innerText = "CRT Filter";
 		item.setAttribute("for","filters-select");
-		box.appendChild(item);
+		win.appendChild(item);
 
 		// ------ menu items 
 		// (This manual plumbing is pretty awful.  Fix it sometime.  -jsj)
 
 		item = this.create_generic_checkbox("filters-select","Enabled",
+			this.lociterm.pref.get("crtoptions.enabled"),
 			((e)=>{
-				this.lociterm.crtfilter.opts.enabled = e.srcElement.checked;
-				this.lociterm.crtfilter.update();
+				this.lociterm.pref.set("crtoptions.enabled",e.srcElement.checked);
 			})
 		);
-		box.appendChild(item);
+		win.appendChild(item);
 
 		item = this.create_generic_checkbox("monotone-select","Monochrome",
+			this.lociterm.pref.get("crtoptions.monotone.enabled"),
 			((e)=>{
-				this.lociterm.crtfilter.opts.monotone.enabled = e.srcElement.checked;
-				this.lociterm.crtfilter.update();
+				this.lociterm.pref.set("crtoptions.monotone.enabled",e.srcElement.checked);
 			})
 		);
-		box.appendChild(item);
+		win.appendChild(item);
 
 		item = this.create_generic_slider("hue-slider","Phosphor Hue",
-			-90,90,1,0,
+			-90,90,1,
+			this.lociterm.pref.get("crtoptions.hue_rotate"),
 			((e)=>{
-				this.lociterm.crtfilter.opts.hue_rotate = e.srcElement.value;
-				this.lociterm.crtfilter.update();
+				this.lociterm.pref.set("crtoptions.hue_rotate",e.srcElement.value);
 			})
 		);
-		box.appendChild(item);
+		win.appendChild(item);
 
 		item = this.create_generic_checkbox("scanline-select","Scanlines",
+			this.lociterm.pref.get("crtoptions.scanline"),
 			((e)=>{
-				this.lociterm.crtfilter.opts.scanline = e.srcElement.checked;
-				this.lociterm.crtfilter.update();
+				this.lociterm.pref.set("crtoptions.scanline",e.srcElement.checked);
 			})
 		);
-		box.appendChild(item);
+		win.appendChild(item);
 
 		item = this.create_generic_slider("barrel-slider","Barrel Distortion",
-			0,256,0.5,0,
+			0,256,0.5,
+			this.lociterm.pref.get("crtoptions.barrel.scale"),
 			((e)=>{
-				this.lociterm.crtfilter.opts.barrel.scale = e.srcElement.value;
-				this.lociterm.crtfilter.update();
+				this.lociterm.pref.set("crtoptions.barrel.scale",e.srcElement.value);
 			})
 		);
-		box.appendChild(item);
+		win.appendChild(item);
 
 		item = this.create_generic_slider("bloom-bloom-slider","Brightness",
-			-2,5,0.05,1.0,
+			-2,5,0.05,
+			this.lociterm.pref.get("crtoptions.bloom.bloom"),
 			((e)=>{
-				this.lociterm.crtfilter.opts.bloom.bloom = e.srcElement.value;
-				this.lociterm.crtfilter.update();
+				this.lociterm.pref.set("crtoptions.bloom.bloom",e.srcElement.value);
 			})
 		);
-		box.appendChild(item);
+		win.appendChild(item);
 
-		return(overlay);
+		return(handle.overlay);
 	}
 
 	// Return an overlay popup for the About menu.
@@ -1333,7 +1436,7 @@ class MenuHandler {
 
 	}
 
-	create_generic_checkbox(named="",labeled="",oninput="") {
+	create_generic_checkbox(named="",labeled="",initval=true,oninput="") {
 		let mydiv;
 		let label;
 		let select;
@@ -1345,7 +1448,7 @@ class MenuHandler {
 		mydiv.appendChild(select);
 		select.setAttribute("type","checkbox");
 		select.setAttribute("name",named);
-		select.checked = true;
+		select.checked = initval;
 		select.id = named;
 		select.onclick = oninput;
 		mydiv.appendChild(select);
@@ -1371,7 +1474,7 @@ class MenuHandler {
 		slider.setAttribute("min",`${min}`);
 		slider.setAttribute("max",`${max}`);
 		slider.setAttribute("step",`${step}`);
-		slider.value = initval;
+		slider.value = parseFloat(initval);
 		slider.oninput = oninput;
 		label.appendChild(slider);
 		return(div);
@@ -1480,21 +1583,15 @@ class MenuHandler {
 	applyMenuNo(index) {
 		let theme = this.menuThemes[index];
 		this.mydiv.insertBefore(this.create_custom_menus(theme),this.mydiv.firstChild);
-		localStorage.setItem("menuthemename",theme.name);
 		if( this.lociterm.gmcp.mod("LociHotkey") !== undefined) {
 		//	this.lociterm.gmcp.mod("LociHotkey").sendGet();
 		}
 	}
 
 	applyMenuName(name) {
-		for(let idx=0;idx<this.menuThemes.length;idx++) {
-			let theme = this.menuThemes[idx];
-			if(theme.name === name) {
-				this.applyMenuNo(idx);
-				let sel = document.getElementById("menu-select");
-				sel.value = idx;
-				break;
-			}
+		let idx = this.menuThemes.findIndex( (x)=>x.name == name );
+		if(idx != -1) {
+			this.applyMenuNo(idx);
 		}
 	}
 

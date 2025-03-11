@@ -1,4 +1,14 @@
 ------- TODO --------------
+* Get rid of pre-lociprefs cruft in lociterm.js
+
+* Add erase sends backspace option
+
+* add telnet CHARSET negotiation.
+
+* BUG fix the MTTS variable in env.
+
+* [requested] pref for putting scrollbar back.
+
 * Do loose matching on the url components.  if they give ?/host=  but no port
  or ssl, try and find an approved partial match.  Same with ?host=&port= but
  no ssl.  (which is the situation that brought this up.)
@@ -6,8 +16,6 @@
 * game_db_update needs to remove mssp table entries too (on a delete.)
 
 * have color of the gear icon reflect the connection status?
-
-* [requested] pref for putting scrollbar back.
 
 * [requested] pref for scrollback length.
 
@@ -93,6 +101,15 @@
 * Server drop perms after launch?
 
 ------------- DONE! -----------------
+
++ FIX the delayed font load thing.
++ FIX the theme selector
++ FIX the menu selector
++ FIX the not saving part
++ ADD a seperate default values so that themes.json doesn't override everything
++ separate terminal font size from ui font size.
++ fix the pref window that don't always show the current values.
++ add enable/disable for command chaining in the nerfbar
 + add "command chaning" to nerfbar via the ; character.
 
 + The lociterm link in the about-game section isn't correct if the game was
