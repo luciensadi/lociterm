@@ -87,6 +87,8 @@ class LociPreferences {
 	// Do what you've got to do to apply the pref delta.
 	apply(delta) {
 
+		let reflow = false;  // set to true if applyXtermoptions needs to be forced.
+
 		// Apply UI elements.
 		if(delta.ui) {
 
@@ -120,6 +122,25 @@ class LociPreferences {
 			if(delta.ui.background != undefined) {
 				document.documentElement.style.setProperty('--background-color', delta.ui.background);
 			}
+
+			if(delta.ui.termScrollBar != undefined) {
+				if(delta.ui.termScrollBar == true) {
+					document.documentElement.style.setProperty('--terminal-sb-visibility', "block");
+					document.documentElement.style.setProperty('--terminal-sb-display', "block");
+					document.documentElement.style.setProperty('--terminal-sb-width', "auto");
+				} else {
+					document.documentElement.style.setProperty('--terminal-sb-visibility', "hidden");
+					document.documentElement.style.setProperty('--terminal-sb-display', "hidden");
+					document.documentElement.style.setProperty('--terminal-sb-width', "none");
+				}
+				reflow = true;
+			}
+
+			if(delta.ui.terminalMargin != undefined) {
+				document.documentElement.style.setProperty('--terminal-margin', delta.ui.terminalMargin );
+				reflow = true;
+			}
+
 		}
 
 		// Apply the nerfbar preferences.
@@ -224,6 +245,10 @@ class LociPreferences {
 
 		}
 
+		if(reflow === true) {
+			this.applyXtermoptions(delta);
+		}
+
 		// merge this apply delta to the general prefs 
 		// this.merged = { ...this.merged, ...delta };  NOPE
 		// Object.assign(this.merged,delta);  NOPE
@@ -261,11 +286,11 @@ class LociPreferences {
 			if(delta.xtermoptions.theme != undefined) {
 				this.lociterm.terminal.options.theme = { ...delta.xtermoptions.theme };
 			}
-			this.lociterm.fitAddon.fit();
-			this.lociterm.terminal.scrollToBottom();
-			this.lociterm.terminal.refresh(0,this.lociterm.terminal.rows-1);
-			this.lociterm.onWindowResize(); 
 		}
+		this.lociterm.fitAddon.fit();
+		this.lociterm.terminal.scrollToBottom();
+		this.lociterm.terminal.refresh(0,this.lociterm.terminal.rows-1);
+		this.lociterm.onWindowResize(); 
 		return;
 	}
 

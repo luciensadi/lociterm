@@ -48,10 +48,6 @@
 					"open": "sys_termsettings"
 				},
 				{
-					"label": "CRT Filter",
-					"open": "sys_filters"
-				},
-				{
 					"label": "Hotkey Editor",
 					"open": "sys_hotkey_editor"
 				}

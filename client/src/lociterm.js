@@ -116,7 +116,6 @@ class LociTerm {
 		this.login = { requested: 0, name: "", password: "", remember: 1 };
 		this.socket = undefined;
 		this.reconnect_key = "";
-		this.themeLoaded = true;  // JSJ TODO remove
 		this.url = "";
 		this.nerfbar = new NerfBar(this,"nerfbar");
 		this.echo_mode = 0;
@@ -152,7 +151,6 @@ class LociTerm {
 			this.terminal.audio.play();
 			// This will shake an android phone!
 			navigator.vibrate([50,100,150]);
-			debugger
 		});
 
 		let rk;
@@ -163,7 +161,6 @@ class LociTerm {
 		} else {
 			this.reconnect_key = "";
 		}
-
 
 		this.autoreconnect = true;
 		this.reconnect_delay = 0;
@@ -190,7 +187,6 @@ class LociTerm {
 		this.connectgame = new ConnectGame(this,this.menuhandler);
 		this.terminal.open(mydiv);
 		this.fitAddon.fit();
-		// this.loadDefaultTheme();  TODO remove me
 		this.doWindowResize();
 		this.resetTerm();
 		this.focus();
@@ -413,10 +409,12 @@ class LociTerm {
 	paste(data) {
 		this.sendMsg(Command.TERM_DATA,data);
 		if(this.echo_mode !=3 ) {
-			if(data.endsWith("\r")) {
-				this.terminal.writeln(data);
-			} else {
-				this.terminal.write(data);
+			if(this.pref.get("nerf.localecho")===true) {
+				if(data.endsWith("\r")) {
+					this.terminal.writeln(data);
+				} else {
+					this.terminal.write(data);
+				}
 			}
 		}
 	}
@@ -665,10 +663,9 @@ class LociTerm {
 				this.echo_mode = obj;
 				if (this.echo_mode == 3) {
 					console.log(`Game connection is char-at-a-time.`);
-					/* honor the user's preference. */
-					let nerfbar = localStorage.getItem("nerfbar");
 					this.nerfbar.setHiddenMode(false);
-					if(nerfbar == "true") {
+					/* honor the user's preference. */
+					if(this.pref.get("nerf.enabled") === true) {
 						this.nerfbar.open();
 					} else {
 						this.nerfbar.close();
@@ -758,277 +755,6 @@ class LociTerm {
 			this.reconnect_delay = 1000;
 		}
 		console.log(`Socket Error, ready state ${this.socket.readyState}, Reconnect in ${this.reconnect_delay}`);
-	}
-
-	loadDefaultTheme() {
-		return;
-		let defaultTheme = this.lociThemes[0];
-		defaultTheme.locithemeno = 0;
-		let defaultThemeName = localStorage.getItem("locithemename");
-		for (let i=0;i<this.lociThemes.length;i++) {
-			if(this.lociThemes[i].name == defaultThemeName) {
-				console.log("Found stored theme name " + defaultThemeName);
-				defaultTheme = this.lociThemes[i];
-				defaultTheme.locithemeno = i;
-				break;
-			}
-		}
-
-		/* This will load up the dumped 'currentTheme' object.  It is here so
-		 * that any of these older individual settings will override the
-		 * currentTheme values. */
-		let ctj = null;
-		if( (ctj = localStorage.getItem("currentTheme")) != null) {
-			if(ctj.xtermoptions) {
-				delete ctj.xtermoptions.theme;
-			}
-			defaultTheme = ObjDeep.merge(JSON.parse(ctj));
-		}
-
-		// these should probably be in an array to be looped over...
-		let fingerSize = localStorage.getItem("fingerSize");
-		if (fingerSize != undefined) {
-			defaultTheme.fingerSize = fingerSize;
-		}
-		let fontSize = localStorage.getItem("fontSize");
-		if (fontSize != undefined) {
-			defaultTheme.fontSize = fontSize;  /* ack, camelcase to match xtermoptions */
-			//defaultTheme.xtermoptions.fontSize = parseFloat(fontSize);
-		}
-		let menuFade = localStorage.getItem("menuFade");
-		if (menuFade != undefined) {
-			defaultTheme.menuFade = menuFade;
-		}
-		let nerfbar = localStorage.getItem("nerfbar");
-		if (nerfbar != undefined) {
-			defaultTheme.nerfbar = nerfbar;
-		} else {
-			defaultTheme.nerfbar = "false";
-		}
-		if(defaultTheme.nerf === undefined) {
-			defaultTheme.nerf = {};
-			defaultTheme.nerf.commandchains = "false";
-		}
-
-		let readermode = localStorage.getItem("screenReaderMode");
-		if(readermode == null) {
-			readermode = "true";  // default to true if not set.
-		}
-		defaultTheme.screenReaderMode = readermode;
-		defaultTheme.xtermoptions.screenReaderMode = readermode;
-
-		let bgridAnchor = localStorage.getItem("bgridAnchor");
-		if (bgridAnchor != undefined) {
-			defaultTheme.bgridAnchor = bgridAnchor;
-		} else {
-			defaultTheme.bgridAnchor = "tr";
-		}
-
-		let menusideAnchor = localStorage.getItem("menusideAnchor");
-		if (menusideAnchor != undefined) {
-			defaultTheme.menusideAnchor = menusideAnchor;
-		} else {
-			defaultTheme.menusideAnchor = "br";
-		}
-
-		this.crtfilter.load();
-		defaultTheme.crtoptions = this.crtfilter.opts;
-
-		this.currentTheme = structuredClone(defaultTheme);
-		this.applyTheme(defaultTheme);
-
-	}
-
-	applyThemeNo(no=-1) {
-		
-		if( (no < 0) || (no >= this.lociThemes.length) ) {
-			return;
-		}
-		this.applyTheme(this.lociThemes[no]);
-	}
-
-	async applyTheme(theme) {
-		return;
-
-		this.themeLoaded = false;
-		// Apply the lociterm specific theme items.  This should probably be
-		// some kind of loop.
-
-		if(theme.fingerSize != undefined) {
-			document.documentElement.style.setProperty('--finger-size', theme.fingerSize);
-			localStorage.setItem("fingerSize",theme.fingerSize);
-		}
-		if(theme.fontSize != undefined) {
-			document.documentElement.style.setProperty('--font-size', theme.fontSize);
-			localStorage.setItem("fontSize",theme.fontSize);
-		}
-		if(theme.menuFade != undefined) {
-			document.documentElement.style.setProperty('--menufade-hidden', theme.menuFade);
-			localStorage.setItem("menuFade",theme.menuFade);
-		}
-		if(theme.nerfbar != undefined) {
-			localStorage.setItem("nerfbar",theme.nerfbar);
-			let select = document.getElementById("nerfbar-select");
-			if(select != undefined) {
-				select.checked = (theme.nerfbar == "true");
-			}
-			if(this.echo_mode == 3) {
-				if(theme.nerfbar == "true") {
-					this.nerfbar.open();
-				} else {
-					this.nerfbar.close();
-				}
-			} else {
-				/* open the nerfbar. */
-				this.nerfbar.open();
-				this.nerfbar.nofade();
-			}
-		}
-		if( (theme.xtermoptions != undefined) && (theme.xtermoptions.screenReaderMode != undefined)) {
-			localStorage.setItem("screenReaderMode",theme.xtermoptions.screenReaderMode);
-		}
-
-		if(theme.menu?.bgridAnchor != undefined) {
-			let anchor = theme.menu.bgridAnchor;
-			if( anchor[0] == 't' ) {
-				document.documentElement.style.setProperty('--bgridAnchor-top', "0");
-				document.documentElement.style.setProperty('--bgridAnchor-bottom', 'unset');
-			} else {
-				document.documentElement.style.setProperty('--bgridAnchor-top', 'unset');
-				document.documentElement.style.setProperty('--bgridAnchor-bottom', "2em");
-			}
-			if( anchor[1] == 'l' ) {
-				document.documentElement.style.setProperty('--bgridAnchor-left', "0");
-				document.documentElement.style.setProperty('--bgridAnchor-right', 'uset');
-			} else {
-				document.documentElement.style.setProperty('--bgridAnchor-left', 'unset');
-				document.documentElement.style.setProperty('--bgridAnchor-right', "0");
-			}
-		}
-
-		if(theme.menu?.menusideAnchor != undefined) {
-			let anchor = theme.menu.menusideAnchor;
-			if( anchor[0] == 't' ) {
-				document.documentElement.style.setProperty('--menuside-open-top', 0);
-				document.documentElement.style.setProperty('--menuside-open-bottom', 'unset');
-				document.documentElement.style.setProperty('--menuside-close-top', "-100%");
-				document.documentElement.style.setProperty('--menuside-close-bottom', 'unset');
-			} else {
-				document.documentElement.style.setProperty('--menuside-open-top', 'unset');
-				document.documentElement.style.setProperty('--menuside-open-bottom', 'var(--nerfbar-offsetHeight)');
-				document.documentElement.style.setProperty('--menuside-close-top', 'unset');
-				document.documentElement.style.setProperty('--menuside-close-bottom', "-100%");
-			}
-			if( anchor[1] == 'l' ) {
-				document.documentElement.style.setProperty('--menuside-open-left', 0);
-				document.documentElement.style.setProperty('--menuside-open-right', 'unset');
-				document.documentElement.style.setProperty('--menuside-close-left', "-100%");
-				document.documentElement.style.setProperty('--menuside-close-right', 'unset');
-			} else {
-				document.documentElement.style.setProperty('--menuside-open-left', 'unset');
-				document.documentElement.style.setProperty('--menuside-open-right', 0);
-				document.documentElement.style.setProperty('--menuside-close-left', 'unset');
-				document.documentElement.style.setProperty('--menuside-close-right', "-100%");
-			}
-		}
-
-		// Update the theme selector
-		if(theme.locithemeno != undefined) {
-			let select = document.getElementById("theme-select");
-			if(select != undefined) {
-				select.value = theme.locithemeno;
-			}
-		}
-
-		if(theme.name != undefined) {
-			localStorage.setItem("locithemename",theme.name);
-			this.themeName = theme.name;
-		}
-	
-		// theme menu items
-		if(theme.menu != undefined) {
-			// Update the menu them selector
-			if(theme.menu.themename != undefined) {
-				this.menuhandler.applyMenuName(theme.menu.themename);
-			}
-		}
-
-		/* Set the main backgound... */
-		if(theme.background != undefined) {
-			document.documentElement.style.setProperty('--background-color', theme.background);
-		} else {
-			/* ... or have the main theme background inherit the xterm background. */
-			if(theme.xtermoptions != undefined) {
-				if(theme.xtermoptions.theme != undefined) {
-					if(theme.xtermoptions.theme.background != undefined) {
-						document.documentElement.style.setProperty('--background-color', theme.xtermoptions.theme.background);
-					}
-				}
-			}
-		}
-
-		if(theme.crtoptions != undefined) {
-			this.crtfilter.update(this.crtfilter.defaultopts);
-			this.crtfilter.update(theme.crtoptions);
-			this.crtfilter.save();
-		}
-
-		// merge this apply delta to the general prefs 
-		this.currentTheme = ObjDeep.merge(this.currentTheme,theme);
-
-		// save the general prefs structure WITHOUT the xtermoptions.theme
-		// information.  The selectable themes may not contain definitions for
-		// all of the different colors, and this prevents saving a non-xterm
-		// default.
-		let saveme = structuredClone(this.currentTheme);
-		if(saveme.xtermoptions !== undefined) {
-			delete saveme.xtermoptions.theme;
-		};
-		localStorage.setItem("currentTheme",
-			JSON.stringify(saveme)
-		);
-
-		// Apply the xtermjs specific theme items.
-		if(theme.xtermoptions != undefined) {
-			// If there's an xterm fontFamily specified, check if that font is
-			// already loaded.  If it is not, ask for it to be loaded, and
-			// trigger an async function to recall applyTheme when it is ready.
-			if(theme.xtermoptions.fontFamily != undefined) {
-				let familylist = theme.xtermoptions.fontFamily.split(",");
-				for (let f=0; f<familylist.length; f++) {
-					let fontname = "16px " + familylist[f];
-					if( document.fonts.check(fontname) == false ) {
-						console.log(`Loading ${fontname}`);
-						document.fonts.load(fontname);
-					}
-				}
-				await document.fonts.ready;
-			}
-			this.terminal.options = Object.assign(theme.xtermoptions);
-		}
-
-		// there is some issue with xterm.js and the fitAddon.fit() function
-		// not being able to return the correct value until what I'm assuming
-		// is an animation frame or two have been rendered under any new font
-		// settings.  With the old dom based xterm.js, that await up there
-		// seemed like it took care of the problem, but moving to the canvas
-		// version seems to have renewed the issue.  I can't find any status
-		// variable in xterm.js that lets me know when it has 'settled down'
-		// enough that fitAddon.fit() will return its final answer, so I'm
-		// retriggering it here after a few arbitrary ms to try and get things
-		// right.  There's also a delay in connect() to wait on the
-		// this.themeLoaded value to go to true, so that the server doesn't get
-		// bogus window sizes reported up to it either.  This is a hack.
-		this.terminal.refresh(0,this.terminal.rows-1);
-		setTimeout( 
-			()=>{ 
-				this.fitAddon.fit(); 
-				this.doWindowResize(); 
-				this.themeLoaded = true;
-			},
-			100.0
-		);
-
 	}
 
 	debug() {

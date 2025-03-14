@@ -749,10 +749,11 @@ class MenuHandler {
 		let initval;
 		let l;
 		let nerf;
+		let deets;
 
 		let handle = this.create_generic_live_window(
 			menuname,
-			"UI Settings",
+			"User Interface",
 			()=>this.create_settings(menuname), // required fn pointer back to this function.
 			"" // whatever is the default for onclose.
 		);
@@ -763,11 +764,29 @@ class MenuHandler {
 
 		box = handle.content;
 
-		let menuitem;
+		let menuitem = this.lociterm.lociThemes.findIndex(
+			(x)=>x.name == this.lociterm.pref.get("ui.themename")
+		);
+		// Theme selector combo
+		l = this.create_generic_selector(
+			"theme-select",
+			"Theme",
+			this.lociterm.lociThemes,
+			menuitem,
+			((e)=>{
+				this.lociterm.pref.set("ui.themename",this.lociterm.lociThemes[e.srcElement.value].name)
+				// this close/open shuffle is because setting the themename can
+				// reset some of the other items in this window.  Closing and
+				// opening is akin to refresh.
+				this.close(menuname);
+				this.open(menuname);
+			})
+		);
+		box.appendChild(l);
+
 		menuitem = this.menuThemes.findIndex(
 			(x)=>x.name == this.lociterm.pref.get("menu.themename")
 		);
-
 		l = this.create_generic_selector(
 			`${menuname}_select`,
 			"Menu Style",
@@ -779,18 +798,45 @@ class MenuHandler {
 		);
 		box.appendChild(l);
 
+		deets = this.create_generic_details("Sizes",menuname);
+		box.appendChild(deets);
+
+		// Terminal Font Size slider
+		l = this.create_generic_slider(
+			`${menuname}_termfont`,
+			`Terminal Text`,
+			8,24,0.0625,
+			parseFloat(this.lociterm.pref.get("xtermoptions.fontSize")),
+			(e)=> {
+				this.lociterm.pref.set("xtermoptions.fontSize",e.srcElement.value);
+			}
+		);
+		deets.appendChild(l);
+
+		// Terminal Line Size slider
+		l = this.create_generic_slider(
+			`${menuname}_termlineheight`,
+			`Line Spacing`,
+			1,3,0.0625,
+			parseFloat(this.lociterm.pref.get("xtermoptions.lineHeight")),
+			(e)=> {
+				this.lociterm.pref.set("xtermoptions.lineHeight",e.srcElement.value);
+			}
+		);
+		deets.appendChild(l);
+
 		// UI Font Size slider
 		l = this.create_generic_slider(
 			`${menuname}_uifont`,
-			`Text Size`,
-			6,24,0.0625,
+			`Menu Text`,
+			8,24,0.0625,
 			parseFloat(this.lociterm.pref.get("ui.fontSize")),
 			(e)=> {
 				this.lociterm.pref.set("ui.fontSize",`${e.srcElement.value}px`);
 			}
 		);
-		box.appendChild(l);
-		
+		deets.appendChild(l);
+
 		// UI Button Size slider
 		l = this.create_generic_slider(
 			`${menuname}_fingersize`,
@@ -801,19 +847,49 @@ class MenuHandler {
 				this.lociterm.pref.set("ui.fingerSize",`${e.srcElement.value}mm`);
 			}
 		);
-		box.appendChild(l);
+		deets.appendChild(l);
+
+
 		
+		deets = this.create_generic_details("Effects",menuname);
+		box.appendChild(deets);
+
 		// UI Button Fade slider
 		l = this.create_generic_slider(
 			`${menuname}_menufade`,
-			`Button Fade`,
+			`Menu Transparency`,
 			0.0,1.0,0.05,
-			this.lociterm.pref.get("menu.fade"),
+			1.0-this.lociterm.pref.get("menu.fade"),
 			(e)=> {
-				this.lociterm.pref.set("menu.fade",e.srcElement.value);
+				this.lociterm.pref.set("menu.fade",1.0-e.srcElement.value);
 			}
 		);
-		box.appendChild(l);
+		deets.appendChild(l);
+
+		// Contrast Ratio slider
+		l = this.create_generic_slider(
+			`${menuname}_contrastratio`,
+			`Enhance Contrast`,
+			1,8,0.25,
+			this.lociterm.pref.get("xtermoptions.minimumContrastRatio"),
+			(e)=> {
+				this.lociterm.pref.set("xtermoptions.minimumContrastRatio",e.srcElement.value);
+			}
+		);
+		deets.appendChild(l);
+
+		l = this.create_generic_button(
+			`${menuname}_crt`,
+			"CRT Filters",
+			"submit",
+			((e)=>{
+				this.open("sys_filters");
+			})
+		);
+		deets.appendChild(l);
+		
+		deets = this.create_generic_details("Layout",menuname);
+		box.appendChild(deets);
 
 		// a selector for Icon Anchor
 		field = this.create_anchor_selector(`${menuname}_bgridAnchor-select`,"Button Grid",
@@ -822,7 +898,7 @@ class MenuHandler {
 				this.lociterm.pref.set("menu.bgridAnchor",e.srcElement.value);
 			})
 		);
-		box.appendChild(field);
+		deets.appendChild(field);
 
 		// a selector for sidemenu Anchor
 		field = this.create_anchor_selector(`${menuname}_menusideAnchor-select`,"Menus",
@@ -831,7 +907,18 @@ class MenuHandler {
 				this.lociterm.pref.set("menu.menusideAnchor",e.srcElement.value);
 			})
 		);
-		box.appendChild(field);
+		deets.appendChild(field);
+
+		// Show terminal scroll bar
+		l = this.create_generic_checkbox(
+			`${menuname}_termScrollBar`,
+			"Hide Scroll Bar",
+			!this.lociterm.pref.get("ui.termScrollBar"),
+			((e)=>{
+				this.lociterm.pref.set("ui.termScrollBar",!e.srcElement.checked);
+			})
+		);
+		deets.appendChild(l);
 
 		// A selector for screenreader hinting.  Its a good idea to leave the
 		// hints on by default, because a VI user is going to have a tougher
@@ -850,7 +937,7 @@ class MenuHandler {
 				);
 			})
 		);
-		box.appendChild(field);
+		deets.appendChild(field);
 
 		return(overlay);
 	}
@@ -886,9 +973,8 @@ class MenuHandler {
 			this.openHandler.set(id,
 				(id)=>{recreate(id);}
 			);
-			if(this.lociterm.currentTheme == undefined) {
-				ret.wait = true;
-			}
+			// and don't open it this time, wait until next.
+			ret.wait = true;
 		} else {
 			// grab the div with the content.
 			ret.content = document.getElementById(`${id}_content`);
@@ -900,8 +986,25 @@ class MenuHandler {
 		return(ret);
 	}
 
+	// returns a details item, styled and with a summary.  Details with the
+	// same group name will only allow one to be open at a time.
+	create_generic_details(summary="",group="") {
+		let deets = document.createElement('details');
+		if(group !== "") {
+			deets.name = group;
+		}
+		deets.classList.add('generic_details');
+
+		let l = document.createElement('summary');
+		l.innerText = summary;
+		deets.appendChild(l);
+
+		return(deets);
+
+	}
+
 	// The sys_termsettings pref editor window.  This is a generic live window
-	// that uses lociterm.currentTheme to rebuild its widgets fresh each time
+	// that uses lociterm.prefs.get to rebuild its widgets fresh each time
 	// it is opened. This is yet another try at making my window's widgets
 	// reflect reality, because I'm really am not very good at this whole
 	// javascript/DOM thing yet!  All of menuhandler.js has been an iteritive
@@ -925,55 +1028,11 @@ class MenuHandler {
 
 		let win = handle.content;
 
-		let menuitem = this.lociterm.lociThemes.findIndex(
-			(x)=>x.name == this.lociterm.pref.get("ui.themename")
-		);
-
-		// Theme selector combo
-		l = this.create_generic_selector(
-			"theme-select",
-			"Theme",
-			this.lociterm.lociThemes,
-			menuitem,
-			((e)=>{
-				this.lociterm.pref.set("ui.themename",this.lociterm.lociThemes[e.srcElement.value].name)
-				// this close/open shuffle is because setting the themename can
-				// reset some of the other items in this window.  Closing and
-				// opening is akin to refresh.
-				this.close(menuname);
-				this.open(menuname);
-			})
-		);
-		win.appendChild(l);
-
-		// Terminal Font Size slider
-		l = this.create_generic_slider(
-			`${menuname}_termfont`,
-			`Text Size`,
-			6,24,0.0625,
-			parseFloat(this.lociterm.pref.get("xtermoptions.fontSize")),
-			(e)=> {
-				this.lociterm.pref.set("xtermoptions.fontSize",e.srcElement.value);
-			}
-		);
-		win.appendChild(l);
-
-		// Contrast Ratio slider
-		l = this.create_generic_slider(
-			`${menuname}_contrastratio`,
-			`Enhance Contrast`,
-			1,8,0.25,
-			this.lociterm.pref.get("xtermoptions.minimumContrastRatio"),
-			(e)=> {
-				this.lociterm.pref.set("xtermoptions.minimumContrastRatio",e.srcElement.value);
-			}
-		);
-		win.appendChild(l);
 
 		// Line Mode CheckBox
 		l = this.create_generic_checkbox(
 			`${menuname}_linemode`,
-			"Line Mode",
+			"Local Line Editing",
 			this.lociterm.pref.get("nerf.enabled"),
 			((e)=>{
 				this.lociterm.pref.set("nerf.enabled",e.srcElement.checked);
@@ -984,16 +1043,52 @@ class MenuHandler {
 				}
 			})
 		);
+		win.appendChild(l);
+
+		// localecho
+		l = this.create_generic_checkbox(
+			`${menuname}_commandchains`,
+			"Line Mode Local Echo",
+			this.lociterm.pref.get("nerf.localecho"),
+			((e)=>{
+				this.lociterm.pref.set("nerf.localecho",e.srcElement.checked);
+			})
+		);
 		// the input is is children[0] of the generic checkbox.
 		win.appendChild(l);
 
 		// Command Chaining CheckBox
 		l = this.create_generic_checkbox(
 			`${menuname}_commandchains`,
-			"Command Chaining with ';'",
+			"Local Chaining with ';'",
 			this.lociterm.pref.get("nerf.chaining"),
 			((e)=>{
 				this.lociterm.pref.set("nerf.chaining",e.srcElement.checked);
+			})
+		);
+		// the input is is children[0] of the generic checkbox.
+		win.appendChild(l);
+
+		// drawBoldTextInBrightColors
+		l = this.create_generic_checkbox(
+			`${menuname}_drawBoldTextInBrightColors`,
+			"Bold is Bright",
+			this.lociterm.pref.get("xtermoptions.drawBoldTextInBrightColors"),
+			((e)=>{
+				this.lociterm.pref.set("xtermoptions.drawBoldTextInBrightColors",e.srcElement.checked);
+			})
+		);
+		// the input is is children[0] of the generic checkbox.
+		win.appendChild(l);
+
+		// fontWeightBold
+		l = this.create_generic_checkbox(
+			`${menuname}_fontWeightBold`,
+			"Bold is Heavy",
+			(this.lociterm.pref.get("xtermoptions.fontWeightBold")==="bold")?true:false,
+			((e)=>{
+				let val = (e.srcElement.checked===true)?"bold":"normal";
+				this.lociterm.pref.set("xtermoptions.fontWeightBold",val);
 			})
 		);
 		// the input is is children[0] of the generic checkbox.
@@ -1032,11 +1127,6 @@ class MenuHandler {
 		let win = handle.content;
 	
 		let item;
-
-		item = document.createElement('label');
-		item.innerText = "CRT Filter";
-		item.setAttribute("for","filters-select");
-		win.appendChild(item);
 
 		// ------ menu items 
 		// (This manual plumbing is pretty awful.  Fix it sometime.  -jsj)
@@ -1499,8 +1589,16 @@ class MenuHandler {
 		divstack.push(l);
 		cdiv = l;
 
+		let wt = document.createElement('div');
+		wt.classList.add('titlebar');
+		cdiv.appendChild(wt);
+		
+		l = document.createElement('label');
+		l.innerText = named;
+		wt.appendChild(l);
+
 		l = document.createElement('span');
-		cdiv.appendChild(l);
+		wt.appendChild(l);
 		l.id = `${id}_close`;
 		if(onclose == "") {
 			l.onclick = (()=>this.done());

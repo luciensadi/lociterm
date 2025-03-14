@@ -463,7 +463,7 @@ class ConnectGame {
 
 		let divs = this.menuhandler.create_generic_window(
 			elementid,
-			"About Game",
+			"",
 			(()=> {
 				this.in_use = false;
 				this.wants_to_select = false;

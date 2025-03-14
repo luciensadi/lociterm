@@ -21,6 +21,11 @@
 	--menuside-close-bottom: -100%;
 	--menuside-close-left: unset;
 	--menuside-close-right: -100%;
+
+	--terminal-margin: 0%;
+	--terminal-sb-display: flex;
+	--terminal-sb-width: none;
+	--terminal-sb-visibility: hidden;
 }
 
 .menuhandler {
@@ -37,7 +42,7 @@
 #menubox {
 	bottom: var(--bgridAnchor-bottom);
 	left: var(--bgridAnchor-left);
-	margin: 1em;
+	margin: calc(var(--finger-size)/3.0);
 	opacity: var(--menufade-hidden);
 	position: absolute;
 	right: var(--bgridAnchor-right);
@@ -280,6 +285,7 @@
 	max-width: 80%;
 	overflow: auto;
 	padding: calc(var(--finger-size)/2.0);
+	padding-top: calc(var(--finger-size)/4.0);
 	position: relative;
 	/* text-transform: capitalize;*/
 }
@@ -419,7 +425,7 @@ div.gameabout {
 	min-height: var(--finger-size);
 	min-width: var(--finger-size);
 	display: flex;
-	justify-content: center;
+	justify-content: flex-end;
 	align-items: center;
 }
 
@@ -428,6 +434,28 @@ div.gameabout {
   color: red;
   cursor: pointer;
 }
+
+.menupop .titlebar {
+    color: var(--book-cover-color);
+    font-weight: bold;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0px;
+    min-height: var(--finger-size);
+    width: 100%;
+    border-bottom: var(--book-cover-color);
+    border-bottom-width: 0.5mm;
+    /*border-bottom-style: solid;*/
+}
+
+.menupop .titlebar .close {
+	position: relative;
+	/* right: 2mm; */
+	/* top: 0; */
+}
+
 
 
 .menufield {
@@ -481,3 +509,32 @@ div.gameabout {
 .hotkeymacro textarea {
 	background: var(--book-altpaper-color);
 }
+
+.generic_details {
+    align-content: center;
+	
+	min-height: calc(var(--finger-size)/1.0);
+	min-width: calc(var(--finger-size)/1.0);
+	font-size: var(--font-size);
+	background: var(--book-altpaper-color);
+	border-color: var(--book-cover-color);
+	border-radius: calc(var(--finger-size)/4.0);
+	border-style: solid;
+	color: var(--book-text-color);
+	border-width: 0.5mm;
+	margin: 0.5mm;
+}
+
+.generic_details:open {
+	background: var(--book-paper-color);
+}
+
+.generic_details > summary {
+	align-content: center;
+	min-height: calc(var(--finger-size)/1.0);
+	min-width: calc(var(--finger-size)/1.0);
+	border-radius: calc(var(--finger-size)/4.0);
+	border-width: 0 0 0.5mm 0;
+	background: var(--book-altpaper-color);
+}
+

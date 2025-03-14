@@ -57,10 +57,9 @@
 #define MTTS_MSLP 1024
 #define MTTS_SSL 2048
 
-#define MTTS_BITS (MTTS_ANSI|MTTS_VT100|MTTS_UTF8|MTTS_256_COLOR|MTTS_MOUSETRACKING|MTTS_PROXY|MTTS_TRUECOLOR|MTTS_MNES|MTTS_SSL)
 /* sometime, make it so the MTTS reported bitfield is controlable from the
  * config file.  For now though... */
-#define MTTS_VALUE "927"
+#define MTTS_BITS (MTTS_ANSI|MTTS_VT100|MTTS_UTF8|MTTS_256_COLOR|MTTS_MOUSETRACKING|MTTS_PROXY|MTTS_TRUECOLOR|MTTS_MNES|MTTS_SSL)
 
 /* local structs and typedefs */
 
@@ -179,9 +178,13 @@ void loci_environment_init(proxy_conn_t *pc) {
 	pc->environment = g_list_append(pc->environment,
 		loci_new_env_var(TELNET_ENVIRON_VAR,"TERMINAL_TYPE","XTERM") 
 	); 
-	/* TODO, MTTS should be dynamic. */
+	if(pc->scanner) {
+		snprintf(buf,sizeof(buf),"%d",(MTTS_BITS & (~MTTS_PROXY)));
+	} else {
+		snprintf(buf,sizeof(buf),"%d",(MTTS_BITS | MTTS_PROXY));
+	}
 	pc->environment = g_list_append(pc->environment,
-		loci_new_env_var(TELNET_ENVIRON_VAR,"MTTS",MTTS_VALUE)
+		loci_new_env_var(TELNET_ENVIRON_VAR,"MTTS",buf)
 	);
 	pc->environment = g_list_append(pc->environment,
 		loci_new_env_var(TELNET_ENVIRON_VAR,"COLORTERM","truecolor")

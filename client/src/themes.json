@@ -277,7 +277,8 @@
 	{
 		"name": "c64",
 		"ui": {
-			"background": "#7869C4"
+			"background": "#7869C4",
+			"terminalMargin": "2%"
 		},
 		"xtermoptions": {
 			"minimumContrastRatio": 2,

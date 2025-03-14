@@ -1,17 +1,14 @@
 ------- TODO --------------
-* Get rid of pre-lociprefs cruft in lociterm.js
-
 * Add erase sends backspace option
 
 * add telnet CHARSET negotiation.
 
-* BUG fix the MTTS variable in env.
-
-* [requested] pref for putting scrollbar back.
-
 * Do loose matching on the url components.  if they give ?/host=  but no port
  or ssl, try and find an approved partial match.  Same with ?host=&port= but
  no ssl.  (which is the situation that brought this up.)
+
+* BUG? check that telnet env vars are only sent if new-env is negotiated
+  (CLIENT_STATE specifically)
 
 * game_db_update needs to remove mssp table entries too (on a delete.)
 
@@ -20,8 +17,6 @@
 * [requested] pref for scrollback length.
 
 * pref for BS/DEL  for bbs support
-
-* fix the theme selector updating itself after theme loads
 
 * encoding selector to override utf-8 with big5 or cp437.
 
@@ -42,13 +37,6 @@
 
 * More comments around some of the nastier code bits, particularly the crummy
 	js that you didn't know how to write well.
-
-* controlable contrast ratio in theme? (can xtermjs do it after setup?)  
-  See xtermoptions.minimumContrastRatio.  (The problem is games with direct 256
-  or TRUECOLOR that just choose horrible colors from a usability standpoint.
-  #008000 blue on #000000 black, for example.)  (It can, but until I have a
-  different place for extra options like that, "themes" is too crowded for it.
-  You can always set it in a theme.)
 
 * General save settings per site?
 
@@ -102,6 +90,20 @@
 
 ------------- DONE! -----------------
 
++ controlable contrast ratio in theme? (can xtermjs do it after setup?)  
+  See xtermoptions.minimumContrastRatio.  (The problem is games with direct 256
+  or TRUECOLOR that just choose horrible colors from a usability standpoint.
+  #008000 blue on #000000 black, for example.)  (It can, but until I have a
+  different place for extra options like that, "themes" is too crowded for it.
+  You can always set it in a theme.)
+
++ BUG fix the MTTS variable in env.
+
++ [requested] pref for putting scrollbar back.
+
++ fix the theme selector updating itself after theme loads
++ FIX nerfbar enable pref isn't overriding anymore?
+* Get rid of pre-lociprefs cruft in lociterm.js
 + FIX the delayed font load thing.
 + FIX the theme selector
 + FIX the menu selector
