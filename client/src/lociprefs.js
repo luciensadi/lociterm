@@ -89,6 +89,13 @@ class LociPreferences {
 
 		let reflow = false;  // set to true if applyXtermoptions needs to be forced.
 
+		// Apply LociTerm elements.
+		if(delta.lociterm) {
+			if(delta.lociterm.encoding) {
+				this.lociterm.encoding = delta.lociterm.encoding;
+			}
+		}
+
 		// Apply UI elements.
 		if(delta.ui) {
 

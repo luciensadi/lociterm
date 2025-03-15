@@ -288,6 +288,7 @@
 	padding-top: calc(var(--finger-size)/4.0);
 	position: relative;
 	/* text-transform: capitalize;*/
+	min-width: 33%;
 }
 
 .menupop .genericcheckbox {
@@ -521,7 +522,7 @@ div.gameabout {
 	border-radius: calc(var(--finger-size)/4.0);
 	border-style: solid;
 	color: var(--book-text-color);
-	border-width: 0.5mm;
+	border-width: 1px;
 	margin: 0.5mm;
 }
 

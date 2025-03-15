@@ -164,6 +164,10 @@
 			"cursorInactiveStyle": "outline",
 			"scrollOnUserInput": true,
 			"theme": {
+				"normal": "AAAAAA",
+				"cursor": "#e4e4e4",
+				"cursorAccent": "#ffffff",
+
 				"black": "#000000",
 				"red": "#AA0000",
 				"green": "#00AA00",

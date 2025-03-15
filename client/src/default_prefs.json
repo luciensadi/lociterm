@@ -48,6 +48,10 @@
 		"contrast": 1.0,
 		"hue_rotate": 0
 	},
+	"lociterm": {
+		"bsSendsDel": true,
+		"encoding": "utf-8"
+	},
 	"xtermoptions": {
 		"drawBoldTextInBrightColors": true,
 		"fontWeightBold": "bold",

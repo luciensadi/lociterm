@@ -121,6 +121,7 @@ class LociTerm {
 		this.echo_mode = 0;
 		this.gmcp = new GMCP(this);
 		this.crtfilter = new CRTFilter("crtfilter");
+		this.encodings = ["utf-8", "cp437", "big5", "gbk", "ascii"];
 		this.encoding = "utf-8";
 		this.cpdecoder = new CpDecoder();
 		// code. 
@@ -183,6 +184,7 @@ class LociTerm {
 		// create hotkey menu after menuhandler is installed
 		this.hotkey.createEditorDiv();
 		this.pref = new LociPreferences(this);
+		this.terminal.attachCustomKeyEventHandler( ev => this.customKeyEvent(ev));
 
 		this.connectgame = new ConnectGame(this,this.menuhandler);
 		this.terminal.open(mydiv);
@@ -357,7 +359,6 @@ class LociTerm {
 		}
 		// Kinda hokey, but if the xtermjs temrinal gets a keystroke while the
 		// client is in line mode, try and activate the nerfbar instead.
-		// if(this.echo_mode != 3) {  FIXME
 		if(this.nerfbar.nerfstate == "active") {
 			this.focus();
 		}
@@ -783,6 +784,28 @@ class LociTerm {
 			}
 		}
 	}
+
+	// Currently, the only custom key event this handles is for remapping bs and del.
+	customKeyEvent(ev) {
+
+		if(this.pref.get("lociterm.bsSendsDel")===true) {
+			return true;
+		}
+
+		const keymap = [
+			{ "key": "Backspace", "ctrlKey": false, "mapCode": 8 },
+			{ "key": "Backspace", "ctrlKey": true, "mapCode": 127 }
+		];
+		if (ev.type === 'keydown') {
+			for (let i in keymap) {
+				if (keymap[i].key == ev.key && keymap[i].ctrlKey == ev.ctrlKey) {
+					this.paste(String.fromCharCode(keymap[i].mapCode));
+					return false;
+				}
+			}
+		}
+	}
+
 }
 
 export { LociTerm }

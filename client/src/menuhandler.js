@@ -817,7 +817,7 @@ class MenuHandler {
 		l = this.create_generic_slider(
 			`${menuname}_termlineheight`,
 			`Line Spacing`,
-			1,3,0.0625,
+			1,2,0.05,
 			parseFloat(this.lociterm.pref.get("xtermoptions.lineHeight")),
 			(e)=> {
 				this.lociterm.pref.set("xtermoptions.lineHeight",e.srcElement.value);
@@ -851,7 +851,7 @@ class MenuHandler {
 
 
 		
-		deets = this.create_generic_details("Effects",menuname);
+		deets = this.create_generic_details("Visual Effects",menuname);
 		box.appendChild(deets);
 
 		// UI Button Fade slider
@@ -878,6 +878,17 @@ class MenuHandler {
 		);
 		deets.appendChild(l);
 
+		// drawBoldTextInBrightColors
+		l = this.create_generic_checkbox(
+			`${menuname}_drawBoldTextInBrightColors`,
+			"Bold is Bright",
+			this.lociterm.pref.get("xtermoptions.drawBoldTextInBrightColors"),
+			((e)=>{
+				this.lociterm.pref.set("xtermoptions.drawBoldTextInBrightColors",e.srcElement.checked);
+			})
+		);
+		deets.appendChild(l);
+
 		l = this.create_generic_button(
 			`${menuname}_crt`,
 			"CRT Filters",
@@ -888,7 +899,7 @@ class MenuHandler {
 		);
 		deets.appendChild(l);
 		
-		deets = this.create_generic_details("Layout",menuname);
+		deets = this.create_generic_details("Menu Layout",menuname);
 		box.appendChild(deets);
 
 		// a selector for Icon Anchor
@@ -1060,7 +1071,7 @@ class MenuHandler {
 		// Command Chaining CheckBox
 		l = this.create_generic_checkbox(
 			`${menuname}_commandchains`,
-			"Local Chaining with ';'",
+			"Local Cmd Chains with ';'",
 			this.lociterm.pref.get("nerf.chaining"),
 			((e)=>{
 				this.lociterm.pref.set("nerf.chaining",e.srcElement.checked);
@@ -1069,40 +1080,60 @@ class MenuHandler {
 		// the input is is children[0] of the generic checkbox.
 		win.appendChild(l);
 
-		// drawBoldTextInBrightColors
-		l = this.create_generic_checkbox(
-			`${menuname}_drawBoldTextInBrightColors`,
-			"Bold is Bright",
-			this.lociterm.pref.get("xtermoptions.drawBoldTextInBrightColors"),
+		let optionList = [];
+		this.lociterm.encodings.forEach(
+			(x)=>optionList.push({name: x, label: x.toUpperCase()})
+		);
+		let menuitem = this.lociterm.encodings.findIndex(
+			(x)=> (x == this.lociterm.encoding)
+		);
+		// Theme selector combo
+		l = this.create_generic_selector(
+			"encoding-select",
+			"Character Set Encoding",
+			optionList,
+			menuitem,
 			((e)=>{
-				this.lociterm.pref.set("xtermoptions.drawBoldTextInBrightColors",e.srcElement.checked);
+				this.lociterm.pref.set("lociterm.encoding",
+					this.lociterm.encodings[e.srcElement.value]
+				);
+			})
+		);
+		win.appendChild(l);
+
+		// bsSendsDel
+		l = this.create_generic_checkbox(
+			`${menuname}_bsSendsDel`,
+			"Backspace sends DEL",
+			this.lociterm.pref.get("lociterm.bsSendsDel"),
+			((e)=>{
+				this.lociterm.pref.set("lociterm.bsSendsDel",e.srcElement.checked);
 			})
 		);
 		// the input is is children[0] of the generic checkbox.
 		win.appendChild(l);
 
-		// fontWeightBold
-		l = this.create_generic_checkbox(
-			`${menuname}_fontWeightBold`,
-			"Bold is Heavy",
-			(this.lociterm.pref.get("xtermoptions.fontWeightBold")==="bold")?true:false,
-			((e)=>{
-				let val = (e.srcElement.checked===true)?"bold":"normal";
-				this.lociterm.pref.set("xtermoptions.fontWeightBold",val);
-			})
-		);
-		// the input is is children[0] of the generic checkbox.
-		win.appendChild(l);
+		// fontWeightBold - It doesn't really make much visual difference, so I turned it off.
+		//l = this.create_generic_checkbox(
+		//	`${menuname}_fontWeightBold`,
+		//	"Bold is Heavy",
+		//	(this.lociterm.pref.get("xtermoptions.fontWeightBold")==="bold")?true:false,
+		//	((e)=>{
+		//		let val = (e.srcElement.checked===true)?"bold":"normal";
+		//		this.lociterm.pref.set("xtermoptions.fontWeightBold",val);
+		//	})
+		//);
+		//// the input is is children[0] of the generic checkbox.
+		//win.appendChild(l);
 
 		// Codepage Combo
-		// Erase sends Backspace CheckBox
 
 		l = this.create_generic_button(
 			`${menuname}_reset`,
 			"Reset Terminal",
 			"submit",
 			((e)=>{
-				this.lociterm.terminal.reset();
+				this.lociterm.resetTerm();
 			})
 		);
 		win.appendChild(l);
@@ -1266,7 +1297,7 @@ class MenuHandler {
 
 		let divs = this.create_generic_window(
 			elementid,
-			"Welcome to LociTerm",
+			"",
 			(()=> { 
 				localStorage.setItem("disclaimer","disclaimed");
 				this.done(); 
