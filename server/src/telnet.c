@@ -26,6 +26,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+#define TELOPTS
+#define TELCMDS
+#include <arpa/telnet.h>
 #include <signal.h>
 #include <libwebsockets.h>
 
@@ -61,32 +65,45 @@
  * config file.  For now though... */
 #define MTTS_BITS (MTTS_ANSI|MTTS_VT100|MTTS_UTF8|MTTS_256_COLOR|MTTS_MOUSETRACKING|MTTS_PROXY|MTTS_TRUECOLOR|MTTS_MNES|MTTS_SSL)
 
+/* some definitions for the CHARSET protocol */
+#define CHARSET_REQUEST 1
+#define CHARSET_ACCEPTED 2
+#define CHARSET_REJECTED 3
+#define CHARSET_TTABLE_IS 4
+#define CHARSET_TTABLE_REJECTED 5
+#define CHARSET_TTABLE_ACK 6
+#define CHARSET_TTABLE_NAK 7
+
 /* local structs and typedefs */
 
 /* global variable declarations */
 
 const telnet_telopt_t supported_telopts[] = {
+	{ TELNET_TELOPT_BINARY,		TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_ECHO,		TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_SGA,		TELNET_WILL,	TELNET_DO },
-	{ TELNET_TELOPT_EOR,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_CHARSET,	TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_TTYPE,		TELNET_WILL,	TELNET_DONT },
-	{ TELNET_TELOPT_MCCP2,		TELNET_WILL,	TELNET_DO },
-	{ TELNET_TELOPT_NEW_ENVIRON,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_EOR,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_MCCP2,		TELNET_WONT,	TELNET_DO },
+	{ TELNET_TELOPT_NEW_ENVIRON,TELNET_WILL,	TELNET_DO },
 	{ TELNET_TELOPT_NAWS,		TELNET_WILL,	TELNET_DONT },
-	{ TELNET_TELOPT_GMCP,		TELNET_WILL,	TELNET_DO },
-	{ TELNET_TELOPT_MSSP,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_GMCP,		TELNET_WONT,	TELNET_DO },
+	{ TELNET_TELOPT_MSSP,		TELNET_WONT,	TELNET_DO },
 	{ -1, 0 ,0 }
 };
 
 const telnet_telopt_t nomssp_telopts[] = {
+	{ TELNET_TELOPT_BINARY,		TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_ECHO,		TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_SGA,		TELNET_WILL,	TELNET_DO },
-	{ TELNET_TELOPT_EOR,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_CHARSET,	TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_TTYPE,		TELNET_WILL,	TELNET_DONT },
-	{ TELNET_TELOPT_MCCP2,		TELNET_WILL,	TELNET_DO },
-	{ TELNET_TELOPT_NEW_ENVIRON,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_EOR,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_MCCP2,		TELNET_WONT,	TELNET_DO },
+	{ TELNET_TELOPT_NEW_ENVIRON,TELNET_WILL,	TELNET_DO },
 	{ TELNET_TELOPT_NAWS,		TELNET_WILL,	TELNET_DONT },
-	{ TELNET_TELOPT_GMCP,		TELNET_WILL,	TELNET_DO },
+	{ TELNET_TELOPT_GMCP,		TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_MSSP,		TELNET_WONT,	TELNET_DONT },
 	{ -1, 0 ,0 }
 };
@@ -266,7 +283,10 @@ void loci_environment_update(proxy_conn_t *pc, int type, char *var, char *value)
 		pc->environment = g_list_append(pc->environment,t);
 	}
 	
-	if(pc->game && pc->game->game_telnet) {
+	if( pc->game && 
+		pc->game->game_telnet &&
+		loci_game_telopt_active(pc,TELNET_TELOPT_NEW_ENVIRON)
+	) {
 		loci_send_env_var_info(t, pc->game->game_telnet);
 	}
 
@@ -346,117 +366,123 @@ void loci_telnet_handler(telnet_t *telnet, telnet_event_t *event, void *user_dat
 		locid_debug(DEBUG_TELNET,pc,"TELNET_EV_WARNING: %s",event->error.msg);
 		break;
 	case TELNET_EV_WILL:
+		locid_debug(DEBUG_TELNET,pc,"TELNET_EV_WILL '%s'",telopt_name(event->neg.telopt));
 		security_checked(pc,CHECK_TELNET);
 		switch(event->neg.telopt) {
 		case TELNET_TELOPT_ECHO:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WILL TELNET_TELOPT_ECHO");
-			gc->echo_opt = 1;
 			loci_client_send_echosga(pc);
 			break;
 		case TELNET_TELOPT_SGA:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WILL TELNET_TELOPT_SGA");
-			gc->sga_opt = 1;
 			loci_client_send_echosga(pc);
 			break;
 		case TELNET_TELOPT_MSDP:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WILL TELNET_TELOPT_MSDP");
 			security_checked(pc,CHECK_MUD);
 			break;
 		case TELNET_TELOPT_MCCP2:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WILL TELNET_TELOPT_MCCP2");
 			security_checked(pc,CHECK_MUD);
 			break;
 		case TELNET_TELOPT_GMCP:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WILL TELNET_TELOPT_GMCP");
 			security_checked(pc,CHECK_MUD);
-			gc->gmcp_opt = 1;
 			loci_client_gmcp_will(pc);
 			break;
 		case TELNET_TELOPT_EOR:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WILL TELNET_TELOPT_EOR");
-			gc->eor_opt = 1;
 			loci_client_send_gaeor(pc,NULL);
 			break;
 		default: 
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WILL: %d", event->neg.telopt);
 			break;
 		}
 		break;
 	case TELNET_EV_WONT:
+		locid_debug(DEBUG_TELNET,pc,"TELNET_EV_WONT '%s'",telopt_name(event->neg.telopt));
 		security_checked(pc,CHECK_TELNET);
 		switch(event->neg.telopt) {
 		case TELNET_TELOPT_ECHO:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WONT TELNET_TELOPT_ECHO");
-			gc->echo_opt = 0;
 			loci_client_send_echosga(pc);
 			break;
 		case TELNET_TELOPT_SGA:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WONT TELNET_TELOPT_SGA");
-			gc->sga_opt = 0;
 			loci_client_send_echosga(pc);
 			break;
 		case TELNET_TELOPT_GMCP:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WONT TELNET_TELOPT_GMCP");
-			gc->gmcp_opt = 0;
 			loci_client_gmcp_wont(pc);
 			break;
 		case TELNET_TELOPT_EOR:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WONT TELNET_TELOPT_EOR");
-			gc->eor_opt = 0;
 			loci_client_send_gaeor(pc,NULL);
 			break;
 		default: 
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_WONT: %d", event->neg.telopt);
 			break;
 		}
 		break;
 	case TELNET_EV_DO:
+		locid_debug(DEBUG_TELNET,pc,"TELNET_EV_DO '%s'",telopt_name(event->neg.telopt));
 		security_checked(pc,CHECK_TELNET);
 		switch(event->neg.telopt) {
 		case TELNET_TELOPT_NAWS:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_DO TELNET_TELOPT_NAWS");
 			loci_telnet_send_naws(gc->game_telnet, pc->client->width, pc->client->height);
 			break;
 		case TELNET_TELOPT_NEW_ENVIRON:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_DO TELNET_TELOPT_NEW_ENVIRON");
 			break;
 		case TELNET_TELOPT_TTYPE:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_DO TELNET_TELOPT_TTYPE");
 			break;
 		case TELNET_TELOPT_SGA:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_DO TELNET_TELOPT_SGA");
-			gc->sga_opt = 1;
 			loci_client_send_echosga(pc);
 			break;
 		default:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_DO: unhandled %d", event->neg.telopt);
 			break;
 		}
 		break;
 	case TELNET_EV_DONT:
+		locid_debug(DEBUG_TELNET,pc,"TELNET_EV_DONT '%s'",telopt_name(event->neg.telopt));
 		security_checked(pc,CHECK_TELNET);
 		switch(event->neg.telopt) {
 		case TELNET_TELOPT_TTYPE:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_DONT TELNET_TELOPT_TTYPE");
 			gc->ttype_state = 0;
 			break;
 		case TELNET_TELOPT_SGA:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_DO TELNET_TELOPT_SGA");
-			gc->sga_opt = 0;
 			loci_client_send_echosga(pc);
 			break;
 		default:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_DONT: unhandled %d", event->neg.telopt);
 			break;
 		}
 	case TELNET_EV_SUBNEGOTIATION:
 		security_checked(pc,CHECK_TELNET);
+		locid_debug(DEBUG_TELNET,pc,"TELNET_EV_SUBNEGOTIATION '%s'",telopt_name(event->sub.telopt));
 		switch (event->sub.telopt) {
 		case TELNET_TELOPT_GMCP:
 			security_checked(pc,CHECK_MUD);
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_SUBNEGOTIATION GMCP");
 			loci_client_send_cmd(pc,GMCP_DATA,event->data.buffer,event->data.size);
 			break;
+		case TELNET_TELOPT_CHARSET: {
+			if(event->sub.size > 1) {
+				switch(event->sub.buffer[0]) {
+					case CHARSET_REQUEST: {
+						char sep = event->sub.buffer[1];
+						char *setlist = strndup(event->sub.buffer+2,event->sub.size-2);
+						locid_debug(DEBUG_TELNET,pc,"Offered charsets: '%s'",setlist);
+						if( strstr(setlist,"UTF-8") ) {
+						} else {
+							locid_debug(DEBUG_TELNET,pc,"CHARSET only UTF-8 is supported right now.",setlist);
+						}
+						char *out = strdup("XUTF-8");
+						*out = CHARSET_ACCEPTED;
+						locid_debug(DEBUG_TELNET,pc,"CHARSET sending '%s'",out+1);
+						telnet_subnegotiation(gc->game_telnet,TELNET_TELOPT_CHARSET,out,strlen(out));
+						free(out);
+						free(setlist);
+						break;
+					}
+					case CHARSET_REJECTED: { 
+						/* game didn't like what we accepted? errrrororr... */
+						locid_debug(DEBUG_TELNET,pc,"CHARSET server didn't like our charset.");
+						break;
+					}
+					case CHARSET_TTABLE_IS:
+					default: {
+						break;
+					}
+				}
+			}
+			break;
+		}
 		case TELNET_TELOPT_NEW_ENVIRON:
 		case TELNET_TELOPT_TTYPE:
 			/* ignore, handled by its own ev type. */
@@ -465,7 +491,6 @@ void loci_telnet_handler(telnet_t *telnet, telnet_event_t *event, void *user_dat
 			security_checked(pc,CHECK_MSSP);
 			break;
 		default:
-			locid_debug(DEBUG_TELNET,pc,"TELNET TELNET_EV_SUBNEGOTIATION: %d", event->sub.telopt);
 			break;
 		}
 		break;
@@ -526,6 +551,15 @@ telnet_t *loci_telnet_init(game_conn_t *gc) {
 	} else {
 		gc->game_telnet = telnet_init(telopts,loci_telnet_handler, 0 , (void *)gc);
 	}
+
+	/* I added this to trigger an active telnet negotiation from this client.
+	 * If you want to be the first active participant to speak telnet,
+	 * uncomment this.  Maybe a preference sometime?  After trying, it seems
+	 * like pidgin telnet muds don't really like the client going first.
+	for(int i=0;telopts[i].telopt>-1;i++) {
+		telnet_negotiate(gc->game_telnet,telopts[i].us,telopts[i].telopt);
+	}
+	*/
 
 	return(gc->game_telnet);
 }
@@ -598,5 +632,35 @@ int set_echosga(int state, int telopt, int yesno) {
 	}
 
 	return(newstate);
+}
+
+/* return pointer to a printable name for a telnet option. */
+const char *telopt_name(uint8_t option) {
+
+	static char buf[16];
+
+	if (TELOPT_OK(option)) {
+		return (telopts[option]);
+	}
+	switch (option) {
+	case TELNET_TELOPT_GMCP:	return ("GMCP");
+	case TELNET_TELOPT_CHARSET: return ("CHARSET");
+	case TELNET_TELOPT_MSSP:	return ("MSSP");
+	case TELNET_TELOPT_MCCP3:	return ("MCCP3");
+	case TELNET_TELOPT_MCCP2:	return ("MCCP2");
+	case TELNET_TELOPT_COMPRESS:return ("MCCP1");
+	case TELNET_TELOPT_MSDP:	return ("MSDP");
+	case TELNET_TELOPT_MSP:		return ("MSP");
+	case TELNET_TELOPT_MXP:		return ("MXP");
+	case TELNET_TELOPT_ATCP:	return ("ATCP");
+	case TELNET_TELOPT_ZMP:		return ("ZMP");
+	case TELNET_TELOPT_MUSHCLIENT:		return ("AARDWOLF MUSHCLIENT");
+	default:
+		break;
+	}
+
+	snprintf(buf,sizeof(buf),"UNKNOWN-%d", option);
+	return (buf);
+
 }
 

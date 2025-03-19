@@ -564,6 +564,9 @@ int main(int argc, char **argv) {
 		}
 			
 		locid_log("Banned port list contains %d ports.",g_list_length(config->db_banned_ports));
+
+		game_db_update_telopt_names();
+		
 	}
 
 	config->client_localmode = localmode;

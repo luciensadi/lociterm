@@ -62,5 +62,8 @@ void game_db_list(int approved);
 void game_db_update(int id,game_db_status_t status);
 int game_db_should_request_mssp(int gameid);
 int game_db_exec(proxy_conn_t *pc,char *sqlstr);
+int game_db_update_telopt(proxy_conn_t *pc, int gameid, uint8_t telopt, int us, int them);
+int game_db_clear_telopts(proxy_conn_t *pc, int gameid);
+int game_db_update_telopt_name(uint8_t telopt,char *name);
 
 #endif /* LOCI_GAMEDB_H */

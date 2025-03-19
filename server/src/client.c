@@ -199,6 +199,8 @@ void loci_client_send_cmd(proxy_conn_t *pc, char cmd, char *in, size_t len) {
 	proxy_msg_t *msg;
 	uint8_t *data;
 
+	if(!pc || !(pc->client)) return;
+
 	/* notice we over-allocate by LWS_PRE + rx len */
 	msg = (proxy_msg_t *)malloc(sizeof(*msg) + LWS_PRE + sizeof(char) + len);
 	data = (uint8_t *)&msg[1] + LWS_PRE;

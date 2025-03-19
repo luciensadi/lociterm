@@ -376,7 +376,10 @@ void loci_client_send_echosga(proxy_conn_t *pc) {
 
 	if(pc->game->data_sent == 0) return;
 
-	int mode = ( ((pc->game->echo_opt & 0x1)<<1) | (pc->game->sga_opt & 0x1));
+	int mode = ( 
+		((loci_game_telopt_active(pc,TELNET_TELOPT_ECHO) & 0x1)<<1) |
+		(loci_game_telopt_active(pc,TELNET_TELOPT_SGA) & 0x1)
+	);
 
 	jobj = json_object_new_int(mode);
 
@@ -390,7 +393,7 @@ void loci_client_send_echosga(proxy_conn_t *pc) {
 
 void loci_client_send_gmcp(proxy_conn_t *pc) {
 
-	if(pc->game && pc->game->gmcp_opt) {
+	if(loci_game_telopt_active(pc,TELNET_TELOPT_GMCP)) { 
 		char module[]="Core.Enable";
 		loci_client_send_cmd(pc,GMCP_DATA,module,strlen(module));
 	} else {
@@ -412,7 +415,7 @@ void loci_client_send_gaeor(proxy_conn_t *pc, const char *msg) {
 
 	if( msg == NULL) {
 		char *status;
-		if(pc->game && pc->game->eor_opt) {
+		if(loci_game_telopt_active(pc,TELNET_TELOPT_EOR)) { 
 			status = "enabled";
 		} else {
 			status = "disabled";
@@ -434,6 +437,8 @@ void loci_client_invalidate_key(proxy_conn_t *pc) {
 	json_object *r;
 	char *jstr;
 
+	if(!pc) return;
+
 	r = json_object_new_object();
 	json_object_object_add(r,"reconnect",json_object_new_string("invalidate"));
 
@@ -451,13 +456,17 @@ void loci_game_send(proxy_conn_t *pc, const char *buffer, size_t size) {
 
 void loci_game_send_gmcp(proxy_conn_t *pc, const char *buffer, size_t size) {
 	if( !(pc && pc->game && pc->game->game_telnet)) return;
-	loci_telnet_send_gmcp(pc->game->game_telnet,buffer,size);
+	if( (loci_game_telopt_active(pc,TELNET_TELOPT_GMCP))) {
+		loci_telnet_send_gmcp(pc->game->game_telnet,buffer,size);
+	}
 }
 
 void loci_game_send_naws(proxy_conn_t *pc) {
 	if( !(pc && pc->game && pc->game->game_telnet)) return;
 	if( !(pc && pc->client)) return;
-	loci_telnet_send_naws(pc->game->game_telnet,pc->client->width,pc->client->height);
+	if( (loci_game_telopt_active(pc,TELNET_TELOPT_NAWS))) {
+		loci_telnet_send_naws(pc->game->game_telnet,pc->client->width,pc->client->height);
+	}
 }
 
 /* returns 1 if the watchdog has expired and is barking, 0 otherwise. */

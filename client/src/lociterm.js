@@ -54,7 +54,14 @@ const Command = {
 	GAME_LIST: 8,
 	MORE_INFO: 9,
 	GAEOR: 10
-}
+};
+
+const EchoMode = {
+	OldLineMode: 0,
+	SGALineMode: 1,
+	HiddenLineMode: 2,
+	CharMode: 3
+};
 
 // IIP support from xterm-addon-image
 // customize as needed (showing addon defaults)
@@ -118,7 +125,7 @@ class LociTerm {
 		this.reconnect_key = "";
 		this.url = "";
 		this.nerfbar = new NerfBar(this,"nerfbar");
-		this.echo_mode = 0;
+		this.echo_mode = EchoMode.OldLineMode;
 		this.gmcp = new GMCP(this);
 		this.crtfilter = new CRTFilter("crtfilter");
 		this.encodings = ["utf-8", "cp437", "big5", "gbk", "ascii"];
@@ -359,8 +366,10 @@ class LociTerm {
 		}
 		// Kinda hokey, but if the xtermjs temrinal gets a keystroke while the
 		// client is in line mode, try and activate the nerfbar instead.
-		if(this.nerfbar.nerfstate == "active") {
-			this.focus();
+		if(this.echo_mode === EchoMode.SGALineMode || this.echo_mode === EchoMode.OldLineMode) {
+			if(this.nerfbar.nerfstate == "active") {
+				this.focus();
+			}
 		}
 	}
 
@@ -381,7 +390,7 @@ class LociTerm {
 		}
 
 		// char at a time mode is 3
-		if(this.echo_mode == 3) {
+		if(this.echo_mode == EchoMode.CharMode) {
 			// Send that data on up the websocket pipe.
 			this.sendMsg(Command.TERM_DATA,data);
 			return;
@@ -409,7 +418,7 @@ class LociTerm {
 
 	paste(data) {
 		this.sendMsg(Command.TERM_DATA,data);
-		if(this.echo_mode !=3 ) {
+		if(this.echo_mode != EchoMode.CharMode ) {
 			if(this.pref.get("nerf.localecho")===true) {
 				if(data.endsWith("\r")) {
 					this.terminal.writeln(data);
@@ -662,7 +671,7 @@ class LociTerm {
 				let msg = new TextDecoder('utf8').decode(rawbuffer).slice(1);
 				try { obj = JSON.parse(msg); } catch { obj = 0; }
 				this.echo_mode = obj;
-				if (this.echo_mode == 3) {
+				if (this.echo_mode == EchoMode.CharMode) {
 					console.log(`Game connection is char-at-a-time.`);
 					this.nerfbar.setHiddenMode(false);
 					/* honor the user's preference. */
@@ -671,7 +680,7 @@ class LociTerm {
 					} else {
 						this.nerfbar.close();
 					}
-				} else if (this.echo_mode == 2) {
+				} else if (this.echo_mode == EchoMode.HiddenLineMode) {
 					this.nerfbar.setHiddenMode(true);
 				} else {
 					console.log(`Game connection is obsolete line mode.`);
@@ -799,7 +808,7 @@ class LociTerm {
 		if (ev.type === 'keydown') {
 			for (let i in keymap) {
 				if (keymap[i].key == ev.key && keymap[i].ctrlKey == ev.ctrlKey) {
-					this.paste(String.fromCharCode(keymap[i].mapCode));
+					this.sendMsg(Command.TERM_DATA,String.fromCharCode(keymap[i].mapCode));
 					return false;
 				}
 			}

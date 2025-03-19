@@ -27,8 +27,13 @@
 /* global #defines */
 /* these are some extra telnet telopt definitions that don't already appear in
  * libtelnet. */
-#define TELNET_TELOPT_GMCP 201
+#define TELNET_TELOPT_CHARSET 42
 #define TELNET_TELOPT_MSDP 69
+#define TELNET_TELOPT_MSP 90
+#define TELNET_TELOPT_MXP 91
+#define TELNET_TELOPT_MUSHCLIENT 102
+#define TELNET_TELOPT_ATCP 200
+#define TELNET_TELOPT_GMCP 201
 
 /* structs and typedefs */
 
@@ -46,5 +51,6 @@ void loci_environment_free(proxy_conn_t *pc);
 void loci_renegotiate_env(proxy_conn_t *pc);
 void loci_environment_update(proxy_conn_t *pc, int type, char *var, char *value);
 void loci_renegotiate_gmcp(proxy_conn_t *pc);
+const char *telopt_name(uint8_t option);
 
 #endif /* LO_TELNET_H */

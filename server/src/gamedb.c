@@ -33,6 +33,7 @@
 #include "locid.h"
 #include "debug.h"
 #include "libtelnet.h"
+#include "telnet.h"
 #include "scan.h"
 
 #include "gamedb.h"
@@ -55,7 +56,7 @@ char *dbstatus_str[] = {
 };
 
 /* database_version doesn't have to go up by 1, but it must never go down. */
-int database_version = 250124;
+int database_version = 251825;
 
 char database_definition[] = \
 	"CREATE TABLE IF NOT EXISTS DBVERSION ( "
@@ -97,6 +98,17 @@ char database_definition[] = \
 		"LASTSCAN DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
 		"STATUS INTEGER NOT NULL DEFAULT 2 "
 		"FOREIGN KEY(STATUS) REFERENCES GAMEDBSTATUS(ID) "
+	");"
+	"CREATE TABLE IF NOT EXISTS TELOPTS ( "
+		"GAME INTEGER NOT NULL, "
+		"TELOPT INTEGER, "
+		"US INTEGER NOT NULL, "
+		"THEM INTEGER NOT NULL, "
+		"FOREIGN KEY(GAME) REFERENCES GAMEDB(ID) "
+	");"
+	"CREATE TABLE IF NOT EXISTS TELOPT_NAMES ( "
+		"TELOPT INTEGER NOT NULL PRIMARY KEY, "
+		"NAME TEXT "
 	");"
 	;
 
@@ -1086,5 +1098,69 @@ int game_db_should_request_mssp(int gameid) {
 	sqlite3_free(sqlstr);
 	sqlite3_close(db);
 	return(ret);
+
+}
+
+int game_db_clear_telopts(proxy_conn_t *pc, int gameid) {
+	
+	char *sqlstr;
+	int ret;
+
+	sqlstr = sqlite3_mprintf(
+		"DELETE FROM TELOPTS WHERE "
+			"GAME is %d "
+		";",
+		gameid
+	);
+	ret = game_db_exec(pc,sqlstr);
+	sqlite3_free(sqlstr);
+	return(ret);
+}
+
+
+int game_db_update_telopt(proxy_conn_t *pc, int gameid, uint8_t telopt, int us, int them) {
+
+	char *sqlstr;
+	int ret;
+
+	sqlstr = sqlite3_mprintf(
+		"INSERT INTO TELOPTS "
+			"(GAME,TELOPT,US,THEM) "
+			"VALUES (%d,%d,%d,%d) "
+		";",
+		gameid,
+		telopt,
+		us,
+		them
+	);
+	ret = game_db_exec(pc,sqlstr);
+	sqlite3_free(sqlstr);
+	return(ret);
+}
+
+int game_db_update_telopt_name(uint8_t telopt,char *name) {
+
+	char *sqlstr;
+	int ret;
+
+	sqlstr = sqlite3_mprintf(
+		"INSERT INTO TELOPT_NAMES"
+			"(TELOPT, NAME) "
+			"VALUES (%d,%Q) "
+			"ON CONFLICT(TELOPT) DO UPDATE SET NAME=excluded.name "
+		";",
+		telopt,
+		name
+	);
+	ret = game_db_exec(NULL,sqlstr);
+	sqlite3_free(sqlstr);
+	return(ret);
+}
+
+void game_db_update_telopt_names(void) {
+
+	for(int i=0;i<=255;i++) {
+		game_db_update_telopt_name(i,telopt_name(i));
+	}
 
 }
