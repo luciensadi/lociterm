@@ -2,6 +2,7 @@
 
 ### Version 2.3.0
 
+- Added network stats monitor
 - Re-worked the preferences manager.
 - Split control for text size into Terminal and Menu prefs.
 - Added Line Spacing to terminal size

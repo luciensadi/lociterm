@@ -32,7 +32,8 @@ class GMCP {
 
 	module = [];
 	supportsSet = [];
-	command = new Map(); // A map of registered command handlers
+	moduleCount = [];		// per module message counter.
+	command = new Map();	// A map of registered command handlers
 
 	constructor(lociterm) {
 		// Get us a path back to the parent terminal.
@@ -73,12 +74,30 @@ class GMCP {
 	// parse out the module, and handle the message. 
 	parse(module,message) {
 
+		// Tweak the module counters.  Note this will intentionall count unhandled
+		// module messages too, for debugging.
+		if( this.moduleCount[module] === undefined ) {
+			this.moduleCount[module] = 1;
+		} else {
+			this.moduleCount[module]++;
+		}
+
 		var fn = this.command.get(module.toLowerCase());
 		if(fn == undefined) {
-			console.warn(`Unsupported module: ${module} msg ${message}`);
+			// they'll show up in netstat, don't log to console anymore.
+			// console.warn(`Unsupported module: ${module} msg ${message}`);
 			return;
 		}
 		return( fn(message) );
+	}
+
+	isSupportedModule(module) {
+		let fn = this.command.get(module.toLowerCase());
+		if(fn == undefined) {
+			return(0);
+		} else {
+			return(1);
+		}
 	}
 	
 	send(module,obj) {
@@ -102,6 +121,7 @@ class GMCP {
 
 	coreEnable(message) {
 		console.log("GMCP Enabled.");
+		this.moduleCount = [];
 		this.enabled = true;
 		// send client hello
 		let obj = new Object();
@@ -126,6 +146,7 @@ class GMCP {
 
 	coreDisable(message) {
 		console.log("GMCP Disabled.");
+		this.moduleCount = [];
 		this.enabled = false;
 	}
 

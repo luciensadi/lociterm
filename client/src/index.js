@@ -64,4 +64,3 @@ if((document.location.search || '') != '') {
 // Let the games begin.
 // open it up and go.
 terminal.connect(websocket_url);
-

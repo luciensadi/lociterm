@@ -25,6 +25,7 @@ import Icons from './icons.svg';
 import LOIcon from './img/lociterm512x512.png';
 import TerminalIcon from './img/bezeltermicon192.png';
 import * as ObjDeep from './objdeep.js';
+import { NetStat } from './netstat.js';
 
 // kinda silly listing these menus seperately but hey, this is webpack.
 import SystemMenu from './menu/system_menu.json';
@@ -48,6 +49,7 @@ class MenuHandler {
 		this.openHandler = new Map();
 		this.menuThemes = this.consolodateMenuThemes();
 		this.menuThemename = this.menuThemes[0];
+		this.netstat = new NetStat(this.lociterm,this);
 
 		// make the menuhandler in the menuhandler div that is already on the
 		// page, or if that doesn't exist, create it under this lociterm.  Note
@@ -68,6 +70,7 @@ class MenuHandler {
 		this.mydiv.appendChild(this.create_disclaimer());
 		this.mydiv.appendChild(this.create_connect());
 		this.mydiv.appendChild(this.create_oob_message());
+		this.mydiv.appendChild(this.netstat.create_netstat());
 
 		// dont loadLogin until lociterm has loaded connectgame
 		//this.loadLogin();

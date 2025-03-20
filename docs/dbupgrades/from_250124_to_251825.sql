@@ -1,0 +1,21 @@
+# Run this one time to update a version 250124 database to a version 251825 database
+# sqlite3 lociterm.db < thisfile.sql
+.bail on
+
+CREATE TABLE IF NOT EXISTS TELOPTS (
+	GAME INTEGER NOT NULL,
+	TELOPT INTEGER,
+	US INTEGER NOT NULL,
+	THEM INTEGER NOT NULL,
+	FOREIGN KEY(GAME) REFERENCES GAMEDB(ID)
+);
+
+CREATE TABLE IF NOT EXISTS TELOPT_NAMES (
+	TELOPT INTEGER NOT NULL PRIMARY KEY,
+	NAME TEXT
+);
+
+# add the dbversion to the table.
+INSERT INTO DBVERSION ("VERSION") VALUES ( 251825 );
+
+.print DB updated to 250124.

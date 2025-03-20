@@ -121,6 +121,7 @@ void loci_client_send_echosga(proxy_conn_t *pc);
 void loci_client_send_gmcp(proxy_conn_t *pc);
 void loci_client_send_gaeor(proxy_conn_t *pc, const char *msg);
 void loci_client_invalidate_key(proxy_conn_t *pc);
+void loci_client_send_netstat(proxy_conn_t *pc);
 void loci_game_send(proxy_conn_t *pc, const char *buffer, size_t size);
 void loci_game_send_gmcp(proxy_conn_t *pc, const char *buffer, size_t size);
 void loci_game_send_naws(proxy_conn_t *pc);

@@ -61,6 +61,8 @@ game_conn_t *new_game_conn(void) {
 	n->uuid = g_uuid_string_random();
 	n->ttype_state = 0;
 	n->hostname = NULL;
+	n->port = 0;
+	n->ssl = 0;
 
 	n->ios = iostat_new();
 
@@ -68,6 +70,7 @@ game_conn_t *new_game_conn(void) {
 	n->check_protocol = 0;
 	n->request_mssp = 0;
 	n->data_sent = 0;
+	n->reconnections = 0;
 
 	return(n);
 }
@@ -414,7 +417,9 @@ void loci_game_update_telopts(proxy_conn_t *pc) {
 	int id = json_object_get_int(json_object_object_get(pc->game_db_entry,"id"));
 	game_db_clear_telopts(pc,id);
 
-	for(int telopt=0;telopt<=255;telopt++) {
+	int *inq = telnet_option_list(gc->game_telnet);
+	for(int i=0;inq[i]!=-1;i++) {
+		int telopt = inq[i];
 		if (telnet_check_option(gc->game_telnet,telopt,&us,&them)) {
 			locid_debug(DEBUG_TELNET,pc,
 				"'%s' us=%d them=%d\n",
@@ -428,4 +433,5 @@ void loci_game_update_telopts(proxy_conn_t *pc) {
 	if(count == 0) {
 		locid_debug(DEBUG_TELNET,pc,"Game spoke NO telnet.");
 	}
+	free(inq);
 }

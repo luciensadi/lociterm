@@ -66,6 +66,10 @@
 				{
 					"label": "Game",
 					"open": "sys_game_about"
+				},
+				{
+					"label": "Network",
+					"open": "sys_netstat"
 				}
 			]
 		},

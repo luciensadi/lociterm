@@ -517,7 +517,133 @@ void loci_proxy_log_status(void) {
 			locid_log("USR1 [%d] (incomplete)",pc->id);
 		}
 	}
+}
+
+void loci_client_send_netstat(proxy_conn_t *pc) {
+
+	json_object *jobj;
+	json_object *cobj;
+	json_object *gobj;
+	json_object *tobj;
+	char *jstr;
+	client_conn_t *cc;
+	game_conn_t *gc;
+	char buf[1024];
+	int ssl;
+
+	if(!pc) return;
+	if(!(cc=pc->client)) return;
+	gc = pc->game;
+
+	jobj = json_object_new_object();
+
+	// client side info
+	cobj = json_object_new_object();
+	json_object_object_add(jobj,"client",cobj);
+
+	json_object_object_add(cobj,"state",
+		json_object_new_string(
+			get_proxy_state_str(get_client_state(pc))
+		)
+	);
+
+	if( !(strcmp(config->client_security ,"ssl") )) {
+		ssl = 1;
+	} else {
+		ssl = 0;
+	}
+
+	json_object_object_add(cobj,"ssl",
+		json_object_new_int(ssl)
+	);
+
+	json_object_object_add(cobj,"host",
+		json_object_new_string(cc->hostname)
+	);
+	json_object_object_add(cobj,"connections",
+		json_object_new_int(cc->connections)
+	);
+
+	iostat_printhuman(buf,sizeof(buf),cc->ios);
+	json_object_object_add(cobj,"data",
+		json_object_new_string(buf)
+	);
+	iostat_printhrate(buf,sizeof(buf),cc->ios);
+	json_object_object_add(cobj,"rate",
+		json_object_new_string(buf)
+	);
 
 
+	// game side info
+	gobj = json_object_new_object();
+	json_object_object_add(jobj,"server",gobj);
+
+	json_object_object_add(gobj,"state",
+		json_object_new_string(
+			get_proxy_state_str(get_game_state(pc))
+		)
+	);
+	if(gc) {
+		if(gc->hostname) {
+			json_object_object_add(gobj,"host",
+				json_object_new_string(gc->hostname)
+			);
+		} else {
+			json_object_object_add(gobj,"host",
+				json_object_new_string("none")
+			);
+		}
+		json_object_object_add(gobj,"port",
+			json_object_new_int(gc->port)
+		);
+		json_object_object_add(gobj,"ssl",
+			json_object_new_int(gc->ssl)
+		);
+		json_object_object_add(gobj,"reconnections",
+			json_object_new_int(gc->reconnections)
+		);
+
+		iostat_printhuman(buf,sizeof(buf),gc->ios);
+		json_object_object_add(gobj,"data",
+			json_object_new_string(buf)
+		);
+		iostat_printhrate(buf,sizeof(buf),gc->ios);
+		json_object_object_add(gobj,"rate",
+			json_object_new_string(buf)
+		);
+
+	}
+
+	// proxy specific stuff
+	json_object_object_add(jobj,"proxycount",
+		json_object_new_int(g_list_length(proxyconns))
+	);
+
+	// telnet protocols
+	if(gc->game_telnet) {
+		tobj = json_object_new_object();
+		int *inq = telnet_option_list(gc->game_telnet);
+		for(int i=0;inq[i]!=-1;i++) {
+			int us, them;
+			if (telnet_check_option(gc->game_telnet,inq[i],&us,&them)) {
+				json_object *cs = json_object_new_object();
+				json_object_object_add(cs,"c",json_object_new_int(us));
+				json_object_object_add(cs,"s",json_object_new_int(them));
+				json_object_object_add(tobj,telopt_name(inq[i]),cs);
+			}
+		}
+		json_object_object_add(jobj,"telnet",tobj);
+	}
+
+	// gmcp?
+
+	// and ship it.
+	jstr = json_object_to_json_string(jobj);
+
+	loci_client_send_cmd(pc,NETSTAT,jstr,strlen(jstr));
+	locid_debug(DEBUG_CLIENT,pc,"send NETSTAT '%s'",jstr);
+
+	json_object_put(jobj);
 
 }
+

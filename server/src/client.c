@@ -57,6 +57,7 @@ client_conn_t *new_client_conn() {
 	n->wsi_client = NULL;
 	n->client_q = g_queue_new();
 	n->client_state = PRXY_INIT;
+	n->connections = 0;
 
 	n->ios = iostat_new();
 
@@ -156,6 +157,7 @@ int loci_client_parse(proxy_conn_t *pc, char *in, size_t len) {
 			memcpy(s,msg,msglen);
 			ret = loci_connect_verbose(pc,s);
 			free(s);
+			pc->client->connections++;
 			return(ret);
 		} break;
 		case DISCONNECT:
@@ -178,6 +180,9 @@ int loci_client_parse(proxy_conn_t *pc, char *in, size_t len) {
 			memcpy(s,msg,msglen);
 			loci_client_more_info(pc,s);
 			free(s);
+			return(0);
+		case NETSTAT:
+			loci_client_send_netstat(pc);
 			return(0);
 		case OLD_LOCITERM:
 			locid_info(pc,"Ooops!  Old lociterm1x protocol detected?",*in);

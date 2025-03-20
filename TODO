@@ -1,16 +1,9 @@
 ------- TODO --------------
 * General save settings per site?
 
-* add telnet CHARSET negotiation.  The Encoding is only set on the client atm.
-Probably should be client/server message to update the telnet side with the
-client setting.
-
 * Do loose matching on the url components.  if they give ?/host=  but no port
  or ssl, try and find an approved partial match.  Same with ?host=&port= but
  no ssl.  (which is the situation that brought this up.)
-
-* BUG? check that telnet env vars are only sent if new-env is negotiated
-  (CLIENT_STATE specifically)
 
 * game_db_update needs to remove mssp table entries too (on a delete.)
 
@@ -45,9 +38,6 @@ client setting.
 	pane.
 
 * Add a "you have login creds here" icon to the games list.
-
-* Add an About->Conennection window, to show connection time, i/o stats, and
-  maybe operating parameters like telnet and gmcp negotiations.
 
 * Think about a GMCP Loci.Font protocol for d/l'in and using a private EUA font set?
 
@@ -85,6 +75,17 @@ client setting.
 * Server drop perms after launch?
 
 ------------- DONE! -----------------
++ Add an About->Conennection window, to show connection time, i/o stats, and
+  maybe operating parameters like telnet and gmcp negotiations.
+
+
++ BUG? check that telnet env vars are only sent if new-env is negotiated
+  (CLIENT_STATE specifically) (fixed.)
+
++ add telnet CHARSET negotiation.  The Encoding is only set on the client atm.
+Probably should be client/server message to update the telnet side with the
+client setting.
+
 + pref for BS/DEL  for bbs support
 
 + encoding selector to override utf-8 with big5 or cp437.

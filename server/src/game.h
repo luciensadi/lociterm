@@ -36,6 +36,8 @@ typedef struct game_conn {
 	telnet_t *game_telnet;			/* telnet protocol tracker */
 	gchar *uuid;					/* reconnect key for this game connection. */
 	char *hostname;					/* for consistency with client */
+	int port;						/* for ease of access */
+	int ssl;						/* for ease of access */
 
 	struct iostat_data *ios;		/* iostat structure for bytes in/out */
 
@@ -46,6 +48,7 @@ typedef struct game_conn {
 
 	int ttype_state;				/* */
 	int data_sent;
+	int reconnections;
 
 	proxy_conn_t *pc;				/* pointer to parent proxy context. */
 	

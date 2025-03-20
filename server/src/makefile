@@ -52,8 +52,8 @@ MISSING_HFILES =
 # For ASAN add -fsanitize=address (uses a much larger memory footprint)
 # use 'break __sanitizer::Die' inside of gdb to stop on a san error
 #CDEBUG = -g -Og
-CDEBUG = -g 
-# CDEBUG = -g  -fsanitize=address
+#CDEBUG = -g  -fsanitize=address
+CDEBUG = -g -Og
 
 # CDEFINES, for passing version number in through makefiles.
 CDEFINES = -D'LOCITERM_VERSION="$(LOCITERM_VERSION)"' 

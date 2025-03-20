@@ -220,6 +220,8 @@ int loci_connect_to_game_host(proxy_conn_t *pc, char *hostname, int port, int ss
 
 	if(pc->game->hostname) free(pc->game->hostname);
 	pc->game->hostname = strdup(hostname);
+	pc->game->port = port;
+	pc->game->ssl = ssl;
 
 	/* lws example code likes to clear out structures before use */
 	memset(&info, 0, sizeof(info));
@@ -304,6 +306,8 @@ int loci_connect_to_game_uuid(proxy_conn_t *pc,char *uuid) {
 	tmpgc = pc->game;
 	pc->game = oldpc->game;
 	oldpc->game = tmpgc;
+
+	pc->game->reconnections++;
 
 	pc->game->pc = pc;
 	if(oldpc->game) {

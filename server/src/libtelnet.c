@@ -1689,4 +1689,19 @@ int telnet_check_option(telnet_t *telnet, unsigned char telopt, int *us, int *th
 	return(0);
 }
 
+/* return an int arry, -1 terminated, of telopts in the q. Caller must free the
+ * int array! */
+int *telnet_option_list(telnet_t *telnet) {
+
+	int *optlist = (int*)malloc(sizeof(int)*257);
+	int *t = optlist;
+
+	for (int i = 0; i != telnet->q_cnt; ++i) {
+		*t++ = telnet->q[i].telopt;
+	}
+	*t++ = -1;
+
+	return(optlist);
+}
+
 

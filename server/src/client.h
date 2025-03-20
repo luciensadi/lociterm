@@ -39,6 +39,7 @@
 #define GAME_LIST 8
 #define MORE_INFO 9
 #define GAEOR 10
+#define NETSTAT 11
 /* special reserved numbers, used to detect connection from lociterm 1.0, which
  * doesn't have a HELLO message. */
 #define OLD_LOCITERM_OUTPUT 48
@@ -52,6 +53,7 @@ typedef struct client_conn {
 	struct lws *wsi_client;			/* LWS wsi for client websocket. */
 	proxy_state_t client_state;		/* current loci interface state */
 	GQueue *client_q;				/* Client side data queue */
+	int connections;
 
 	struct iostat_data *ios;		/* iostat structure for bytes in/out */
 

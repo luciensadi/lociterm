@@ -686,6 +686,7 @@ extern void telnet_zmp_arg(telnet_t *telnet, const char *arg);
 
 /* JSJ LociTerm addtion to libtelnet!!! */
 extern int telnet_check_option(telnet_t *telnet, unsigned char telopt, int *us, int *them);
+int *telnet_option_list(telnet_t *telnet);
 
 /* C++ support */
 #if defined(__cplusplus)

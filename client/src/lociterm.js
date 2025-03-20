@@ -53,7 +53,8 @@ const Command = {
 	GMCP_DATA: 7,
 	GAME_LIST: 8,
 	MORE_INFO: 9,
-	GAEOR: 10
+	GAEOR: 10,
+	NETSTAT: 11
 };
 
 const EchoMode = {
@@ -296,6 +297,11 @@ class LociTerm {
 			msg = {};
 		}
 		this.sendMsg(Command.MORE_INFO,JSON.stringify(msg));
+	}
+
+	requestNetStat(request) {
+		request = new Object();	 // ignore the request for now.
+		this.sendMsg(Command.NETSTAT,JSON.stringify(request));
 	}
 
 	focus(data) {
@@ -606,6 +612,7 @@ class LociTerm {
 				break;
 
 			case Command.CONNECT: {
+				this.gmcp.moduleCount=[];
 				let msg = new TextDecoder('utf8').decode(rawbuffer).slice(1);
 				console.log(`Recieved connection update '${msg}'`);
 				let robj = JSON.parse(msg);
@@ -713,7 +720,17 @@ class LociTerm {
 				this.connectgame.update_game_about(obj);
 				break;
 			}
+			case Command.NETSTAT: {
+				let obj;
+				let msg = new TextDecoder('utf8').decode(rawbuffer).slice(1);
+				try { obj = JSON.parse(msg); } catch { obj = {}; }
+				this.menuhandler.netstat.update(obj);
+				break;
+			}
 			case Command.HELLO: {
+
+				this.gmcp.moduleCount=[];
+
 				let hello = new TextDecoder('utf8').decode(rawbuffer).slice(1);
 				console.log(`Hello from server ${hello}`);
 

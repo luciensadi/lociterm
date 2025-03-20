@@ -528,6 +528,7 @@ div.gameabout {
 
 .generic_details:open {
 	background: var(--book-paper-color);
+	overflow-x: auto;
 }
 
 .generic_details > summary {
@@ -537,5 +538,20 @@ div.gameabout {
 	border-radius: calc(var(--finger-size)/4.0);
 	border-width: 0 0 0.5mm 0;
 	background: var(--book-altpaper-color);
+}
+
+.generic_details > summary::marker {
+	color: var(--book-cover-color);
+}
+
+.generic_details > table {
+	width: 100%;
+}
+
+.generic_details > table > tr {
+	background: var(--book-altpaper-color);
+}
+.generic_details > table > tr:nth-child(1) {
+	background: var(--book-paper-color);
 }
 
