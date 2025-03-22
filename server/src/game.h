@@ -63,6 +63,7 @@ void free_game_conn(game_conn_t *f);
 
 void loci_game_write(proxy_conn_t *pc, char *in, size_t len);
 int loci_game_telopt_active(proxy_conn_t *pc,uint8_t telopt);
+void loci_game_charset_apply(proxy_conn_t *pc,const char *charset, int inform_server);
 
 int callback_loci_game(
 	struct lws *wsi, enum lws_callback_reasons reason,

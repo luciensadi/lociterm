@@ -39,7 +39,7 @@ LOCITERM_VERSION ?= 2.3-dev$(TS)
 # List the LOCI .c files here.  Order doesn't matter.  Dont worry
 # about header file dependencies, this makefile will figure them out
 # automatically.
-LOCI_CFILES = locid.c debug.c proxy.c client.c game.c connect.c telnet.c libtelnet.c gamedb.c iostats.c scan.c
+LOCI_CFILES = locid.c debug.c proxy.c client.c game.c connect.c telnet.c libtelnet.c gamedb.c iostats.c scan.c charset.c
 
 # The list of HFILES, (required for making the ctags database) is generated
 # automatically from the LOCI_CFILES list.  However, not everything in LOCI_CFILES

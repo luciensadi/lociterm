@@ -40,8 +40,9 @@
 #define MORE_INFO 9
 #define GAEOR 10
 #define NETSTAT 11
-/* special reserved numbers, used to detect connection from lociterm 1.0, which
- * doesn't have a HELLO message. */
+#define CHARSET 12
+/* OLD_* are special reserved numbers, used to detect connection from lociterm
+ * 1.0, which doesn't have a HELLO message. */
 #define OLD_LOCITERM_OUTPUT 48
 #define OLD_LOCITERM 49
 

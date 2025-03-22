@@ -54,7 +54,8 @@ const Command = {
 	GAME_LIST: 8,
 	MORE_INFO: 9,
 	GAEOR: 10,
-	NETSTAT: 11
+	NETSTAT: 11,
+	CHARSET: 12
 };
 
 const EchoMode = {
@@ -727,6 +728,12 @@ class LociTerm {
 				this.menuhandler.netstat.update(obj);
 				break;
 			}
+			case Command.CHARSET: {
+				let obj;
+				let msg = new TextDecoder('utf8').decode(rawbuffer).slice(1);
+				this.cmdCharset(msg);
+				break;
+			}
 			case Command.HELLO: {
 
 				this.gmcp.moduleCount=[];
@@ -830,6 +837,18 @@ class LociTerm {
 				}
 			}
 		}
+	}
+
+	/* translate javascript charset to network charset */
+	sendCharset(charset) {
+		this.sendMsg(Command.CHARSET,charset.toUpperCase());
+	}
+
+	/* network charset to javascript charset */
+	cmdCharset(charset) {
+		this.encoding = charset.toLowerCase();
+		this.pref.set("lociterm.encoding", charset.toLowerCase());
+		console.log(`CHARSET is ${charset}`);
 	}
 
 }

@@ -105,7 +105,6 @@ void free_client_conn(client_conn_t *f) {
 
 }
 
-
 /* reads loci client protocol messages and acts on them. */
 int loci_client_parse(proxy_conn_t *pc, char *in, size_t len) {
 
@@ -183,6 +182,13 @@ int loci_client_parse(proxy_conn_t *pc, char *in, size_t len) {
 			return(0);
 		case NETSTAT:
 			loci_client_send_netstat(pc);
+			return(0);
+		case CHARSET:
+			s=strndup(msg,msglen); /* make zero terminated */
+			/* inform the game of client side change*/
+			loci_proxy_set_charset(pc,s);
+			loci_game_send_charset(pc);
+			free(s);
 			return(0);
 		case OLD_LOCITERM:
 			locid_info(pc,"Ooops!  Old lociterm1x protocol detected?",*in);

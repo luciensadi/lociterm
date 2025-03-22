@@ -435,3 +435,4 @@ void loci_game_update_telopts(proxy_conn_t *pc) {
 	}
 	free(inq);
 }
+

@@ -1097,9 +1097,9 @@ class MenuHandler {
 			optionList,
 			menuitem,
 			((e)=>{
-				this.lociterm.pref.set("lociterm.encoding",
-					this.lociterm.encodings[e.srcElement.value]
-				);
+				let charset = this.lociterm.encodings[e.srcElement.value];
+				this.lociterm.pref.set("lociterm.encoding", charset);
+				this.lociterm.sendCharset(charset);
 			})
 		);
 		win.appendChild(l);

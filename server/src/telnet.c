@@ -41,6 +41,7 @@
 #include "client.h"
 #include "game.h"
 #include "gamedb.h"
+#include "charset.h"
 
 #include "telnet.h"
 
@@ -65,15 +66,6 @@
  * config file.  For now though... */
 #define MTTS_BITS (MTTS_ANSI|MTTS_VT100|MTTS_UTF8|MTTS_256_COLOR|MTTS_MOUSETRACKING|MTTS_PROXY|MTTS_TRUECOLOR|MTTS_MNES|MTTS_SSL)
 
-/* some definitions for the CHARSET protocol */
-#define CHARSET_REQUEST 1
-#define CHARSET_ACCEPTED 2
-#define CHARSET_REJECTED 3
-#define CHARSET_TTABLE_IS 4
-#define CHARSET_TTABLE_REJECTED 5
-#define CHARSET_TTABLE_ACK 6
-#define CHARSET_TTABLE_NAK 7
-
 /* local structs and typedefs */
 
 /* global variable declarations */
@@ -82,7 +74,7 @@ const telnet_telopt_t supported_telopts[] = {
 	{ TELNET_TELOPT_BINARY,		TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_ECHO,		TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_SGA,		TELNET_WILL,	TELNET_DO },
-	{ TELNET_TELOPT_CHARSET,	TELNET_WONT,	TELNET_DO },
+	{ TELNET_TELOPT_CHARSET,	TELNET_WILL,	TELNET_DO },
 	{ TELNET_TELOPT_TTYPE,		TELNET_WILL,	TELNET_DONT },
 	{ TELNET_TELOPT_EOR,		TELNET_WILL,	TELNET_DO },
 	{ TELNET_TELOPT_MCCP2,		TELNET_WONT,	TELNET_DO },
@@ -97,7 +89,7 @@ const telnet_telopt_t nomssp_telopts[] = {
 	{ TELNET_TELOPT_BINARY,		TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_ECHO,		TELNET_WONT,	TELNET_DO },
 	{ TELNET_TELOPT_SGA,		TELNET_WILL,	TELNET_DO },
-	{ TELNET_TELOPT_CHARSET,	TELNET_WONT,	TELNET_DO },
+	{ TELNET_TELOPT_CHARSET,	TELNET_WILL,	TELNET_DO },
 	{ TELNET_TELOPT_TTYPE,		TELNET_WILL,	TELNET_DONT },
 	{ TELNET_TELOPT_EOR,		TELNET_WILL,	TELNET_DO },
 	{ TELNET_TELOPT_MCCP2,		TELNET_WONT,	TELNET_DO },
@@ -189,9 +181,15 @@ void loci_environment_init(proxy_conn_t *pc) {
 	pc->environment = g_list_append(pc->environment,
 		loci_new_env_var(TELNET_ENVIRON_VAR,"CLIENT_VERSION",buf)
 	);
-	pc->environment = g_list_append(pc->environment,
-		loci_new_env_var(TELNET_ENVIRON_VAR,"CHARSET","UTF-8")
-	);
+	if(pc->charset) {
+		pc->environment = g_list_append(pc->environment,
+			loci_new_env_var(TELNET_ENVIRON_VAR,"CHARSET",pc->charset)
+		);
+	} else {
+		pc->environment = g_list_append(pc->environment,
+			loci_new_env_var(TELNET_ENVIRON_VAR,"CHARSET",loci_charset_get_default())
+		);
+	}
 	pc->environment = g_list_append(pc->environment,
 		loci_new_env_var(TELNET_ENVIRON_VAR,"TERMINAL_TYPE","XTERM") 
 	); 
@@ -426,6 +424,10 @@ void loci_telnet_handler(telnet_t *telnet, telnet_event_t *event, void *user_dat
 		case TELNET_TELOPT_SGA:
 			loci_client_send_echosga(pc);
 			break;
+		case TELNET_TELOPT_CHARSET: {
+			loci_charset_handler(telnet,event,user_data);
+			break;
+		}
 		default:
 			break;
 		}
@@ -452,35 +454,7 @@ void loci_telnet_handler(telnet_t *telnet, telnet_event_t *event, void *user_dat
 			loci_client_send_cmd(pc,GMCP_DATA,event->data.buffer,event->data.size);
 			break;
 		case TELNET_TELOPT_CHARSET: {
-			if(event->sub.size > 1) {
-				switch(event->sub.buffer[0]) {
-					case CHARSET_REQUEST: {
-						char sep = event->sub.buffer[1];
-						char *setlist = strndup(event->sub.buffer+2,event->sub.size-2);
-						locid_debug(DEBUG_TELNET,pc,"Offered charsets: '%s'",setlist);
-						if( strstr(setlist,"UTF-8") ) {
-						} else {
-							locid_debug(DEBUG_TELNET,pc,"CHARSET only UTF-8 is supported right now.",setlist);
-						}
-						char *out = strdup("XUTF-8");
-						*out = CHARSET_ACCEPTED;
-						locid_debug(DEBUG_TELNET,pc,"CHARSET sending '%s'",out+1);
-						telnet_subnegotiation(gc->game_telnet,TELNET_TELOPT_CHARSET,out,strlen(out));
-						free(out);
-						free(setlist);
-						break;
-					}
-					case CHARSET_REJECTED: { 
-						/* game didn't like what we accepted? errrrororr... */
-						locid_debug(DEBUG_TELNET,pc,"CHARSET server didn't like our charset.");
-						break;
-					}
-					case CHARSET_TTABLE_IS:
-					default: {
-						break;
-					}
-				}
-			}
+			loci_charset_handler(telnet,event,user_data);
 			break;
 		}
 		case TELNET_TELOPT_NEW_ENVIRON:

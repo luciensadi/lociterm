@@ -1,4 +1,6 @@
 ------- TODO --------------
+* Document behavior of locibot scanner
+
 * General save settings per site?
 
 * Do loose matching on the url components.  if they give ?/host=  but no port

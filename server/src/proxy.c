@@ -35,6 +35,8 @@
 #include "gamedb.h"
 #include "debug.h"
 #include "scan.h"
+#include "charset.h"
+
 
 /* structures and types */
 
@@ -91,6 +93,7 @@ proxy_conn_t *new_proxy_conn() {
 	n->game_db_entry = NULL;
 
 	n->environment = NULL;
+	n->charset = strdup(loci_charset_get_default());
 
 	proxyconns=g_list_append(proxyconns,n);
 
@@ -115,6 +118,11 @@ void free_proxy_conn(proxy_conn_t *f) {
 	f->game_db_entry = NULL;
 
 	loci_environment_free(f);
+
+	if(f->charset) {
+		free(f->charset);
+		f->charset = NULL;
+	}
 
 	proxyconns=g_list_remove(proxyconns,f);
 
@@ -461,6 +469,7 @@ void loci_game_send_gmcp(proxy_conn_t *pc, const char *buffer, size_t size) {
 	}
 }
 
+
 void loci_game_send_naws(proxy_conn_t *pc) {
 	if( !(pc && pc->game && pc->game->game_telnet)) return;
 	if( !(pc && pc->client)) return;
@@ -645,5 +654,25 @@ void loci_client_send_netstat(proxy_conn_t *pc) {
 
 	json_object_put(jobj);
 
+}
+
+/* command the charset down to the client. */
+void loci_client_send_charset(proxy_conn_t *pc) {
+	loci_client_send_cmd(pc,CHARSET,pc->charset,strlen(pc->charset));
+}
+
+/* command the charset down to the server. */
+void loci_game_send_charset(proxy_conn_t *pc) {
+	loci_charset_send_request(pc);
+}
+
+/* set the charset value in the proxy.  Note that this doesn't inform either
+ * the client or game. Caller should also call loci_client_send_charset or
+ * loci_game_send_charset (or both) depending on the direction required. */
+void loci_proxy_set_charset(proxy_conn_t *pc, const char *charset) {
+	char *s = strdup(charset);
+	if(pc->charset) free(pc->charset);
+	pc->charset = s;
+	loci_environment_update(pc,TELNET_ENVIRON_VAR,"CHARSET",charset);
 }
 

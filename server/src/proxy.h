@@ -66,7 +66,7 @@ typedef struct proxy_conn {
 	json_object *mssp;				/* TEMPORARY MSSP data recieved from game. */
 
 	GList *environment;				/* proxied environment variables */
-
+	char *charset;					/* The charset in use. */
 
 } proxy_conn_t;
 
@@ -122,12 +122,15 @@ void loci_client_send_gmcp(proxy_conn_t *pc);
 void loci_client_send_gaeor(proxy_conn_t *pc, const char *msg);
 void loci_client_invalidate_key(proxy_conn_t *pc);
 void loci_client_send_netstat(proxy_conn_t *pc);
+void loci_client_send_charset(proxy_conn_t *pc);
 void loci_game_send(proxy_conn_t *pc, const char *buffer, size_t size);
 void loci_game_send_gmcp(proxy_conn_t *pc, const char *buffer, size_t size);
 void loci_game_send_naws(proxy_conn_t *pc);
+void loci_game_send_charset(proxy_conn_t *pc);
 void loci_game_shutdown(proxy_conn_t *pc);
 int loci_proxy_watchdog(proxy_conn_t *pc);
 void loci_proxy_shutdown(proxy_conn_t *pc);
+void loci_proxy_set_charset(proxy_conn_t *pc, const char *charset);
 void free_proxyconns(void);
 void loci_proxy_log_status(void);
 #endif /* LO_PROXY_H */
