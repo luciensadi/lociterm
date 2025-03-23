@@ -27,6 +27,7 @@ import { AttachAddon } from '@xterm/addon-attach';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { ImageAddon, IImageAddonOptions } from '@xterm/addon-image';
 import { WebglAddon } from '@xterm/addon-webgl';
+import { SerializeAddon } from '@xterm/addon-serialize';
 
 import { MenuHandler } from './menuhandler.js';
 import { NerfBar } from './nerfbar.js';
@@ -150,6 +151,10 @@ class LociTerm {
 		this.imageAddon = new ImageAddon();
 		this.terminal.loadAddon(this.imageAddon);
 
+		this.serializeaddon = new SerializeAddon();
+		this.terminal.loadAddon(this.serializeaddon);
+		this.serializeInit(mydiv.id);
+
 		this.terminal.onKey((e) => this.onKey(e) );
 		this.terminal.onData((e) => this.onTerminalData(e) );
 		this.terminal.onBinary((e) => this.onBinaryData(e) );
@@ -196,6 +201,9 @@ class LociTerm {
 		this.terminal.attachCustomKeyEventHandler( ev => this.customKeyEvent(ev));
 
 		this.connectgame = new ConnectGame(this,this.menuhandler);
+
+		this.serializeRestore(mydiv.id);
+
 		this.terminal.open(mydiv);
 		this.fitAddon.fit();
 		this.doWindowResize();
@@ -849,6 +857,24 @@ class LociTerm {
 		this.encoding = charset.toLowerCase();
 		this.pref.set("lociterm.encoding", charset.toLowerCase());
 		console.log(`CHARSET is ${charset}`);
+	}
+
+	serializeInit(id) {
+		window.onbeforeunload = ( ()=> {
+			this.serializeSave(id);
+		});
+	}
+
+	serializeSave(id) {
+		let data = this.serializeaddon.serialize();
+		sessionStorage.setItem(`${id}_ser`,data);
+	}
+
+	serializeRestore(id) {
+		let data = sessionStorage.getItem(`${id}_ser`);
+		if(data !== null) {
+			this.terminal.write(data);
+		} 
 	}
 
 }

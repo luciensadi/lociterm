@@ -1,5 +1,10 @@
 ## What's New
 
+### Version 2.3.1
+
+- Added terminal state restoration on refresh.
+- Better end-to-end CHARSET support.
+
 ### Version 2.3.0
 
 - Added network stats monitor
