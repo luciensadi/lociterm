@@ -106,4 +106,5 @@ npm install --save @xterm/addon-attach
 npm install --save @xterm/addon-unicode11
 npm install --save @xterm/addon-image
 npm install --save @xterm/addon-webgl
+npm install --save @xterm/addon-serialize
 
