@@ -49,7 +49,8 @@ class GMCP {
 		this.initModule(new CharLogin(this));
 		this.initModule(new LociHotkey(this));
 		this.initModule(new LociMenu(this));
-
+	
+		this.inlineDebug = false;
 	}
 
 	mod(name) {
@@ -82,6 +83,11 @@ class GMCP {
 			this.moduleCount[module]++;
 		}
 
+		if(this.inlineDebug) {
+			this.lociterm.terminal.write(`GMCP IN: ${module} `);
+			this.lociterm.terminal.writeln(`${JSON.stringify(message,null,4)}`);
+		}
+
 		var fn = this.command.get(module.toLowerCase());
 		if(fn == undefined) {
 			// they'll show up in netstat, don't log to console anymore.
@@ -102,6 +108,12 @@ class GMCP {
 	
 	send(module,obj) {
 		if( true || this.isEnabled() ) {
+
+			if(this.inlineDebug) {
+				this.lociterm.terminal.write(`GMCP OUT: ${module} `);
+				this.lociterm.terminal.writeln(`${JSON.stringify(obj,null,4)}`);
+			}
+
 			this.lociterm.doSendGMCP(module,obj);
 		}
 	}
