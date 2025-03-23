@@ -434,7 +434,9 @@ class LociTerm {
 	paste(data) {
 		this.sendMsg(Command.TERM_DATA,data);
 		if(this.echo_mode != EchoMode.CharMode ) {
-			if(this.pref.get("nerf.localecho")===true) {
+			if( (this.pref.get("nerf.localecho")===true) &&
+				(this.echo_mode != EchoMode.HiddenLineMode)
+			) {
 				if(data.endsWith("\r")) {
 					this.terminal.writeln(data);
 				} else {
