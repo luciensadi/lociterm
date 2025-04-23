@@ -46,7 +46,7 @@ git clone https://libwebsockets.org/repo/libwebsockets
 	git status
 	git pull
 )
-cmake -DLWS_IPV6=1 -DLWS_WITH_ZLIB=ON -DLWS_WITHOUT_EXTENSIONS=OFF ..
+cmake -DLWS_IPV6=1 -DLWS_WITH_ZLIB=ON -DLWS_WITHOUT_EXTENSIONS=OFF -DLWS_WITH_LIBUV=ON -DLWS_WITH_EVENT_LIBS=ON ..
 make
 sudo make install
 

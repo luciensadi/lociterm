@@ -28,7 +28,7 @@ LOCI = locid
 # This is only here so that if you make only the server, there's at least some
 # version number.
 TS = $(shell date +%H%M%S)
-LOCITERM_VERSION ?= 2.1-dev$(TS)
+LOCITERM_VERSION ?= 2.3-dev$(TS)
 
 # If your version of libwebsocket has a broken permessage-deflate handler (i.e.
 # libwebsockets main branch, with git commit
@@ -39,7 +39,7 @@ LOCITERM_VERSION ?= 2.1-dev$(TS)
 # List the LOCI .c files here.  Order doesn't matter.  Dont worry
 # about header file dependencies, this makefile will figure them out
 # automatically.
-LOCI_CFILES = locid.c debug.c proxy.c client.c game.c connect.c telnet.c libtelnet.c gamedb.c iostats.c
+LOCI_CFILES = locid.c debug.c proxy.c client.c game.c connect.c telnet.c libtelnet.c gamedb.c iostats.c scan.c charset.c
 
 # The list of HFILES, (required for making the ctags database) is generated
 # automatically from the LOCI_CFILES list.  However, not everything in LOCI_CFILES
@@ -52,8 +52,8 @@ MISSING_HFILES =
 # For ASAN add -fsanitize=address (uses a much larger memory footprint)
 # use 'break __sanitizer::Die' inside of gdb to stop on a san error
 #CDEBUG = -g -Og
-CDEBUG = -g 
-# CDEBUG = -g  -fsanitize=address
+#CDEBUG = -g  -fsanitize=address
+CDEBUG = -g -Og
 
 # CDEFINES, for passing version number in through makefiles.
 CDEFINES = -D'LOCITERM_VERSION="$(LOCITERM_VERSION)"' 
@@ -78,6 +78,7 @@ LINKLIBS += `pkg-config --libs libwebsockets`
 LINKLIBS += `pkg-config --libs glib-2.0`
 LINKLIBS += `pkg-config --libs json-c`
 LINKLIBS += `pkg-config --libs sqlite3`
+LINKLIBS += `pkg-config --libs libuv`
 
 # #### ############################################# ###
 # ####         Makefile magic begins here.           ###

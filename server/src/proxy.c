@@ -34,6 +34,9 @@
 #include "telnet.h"
 #include "gamedb.h"
 #include "debug.h"
+#include "scan.h"
+#include "charset.h"
+
 
 /* structures and types */
 
@@ -79,6 +82,8 @@ proxy_conn_t *new_proxy_conn() {
 	n->client = new_client_conn();
 	n->client->pc = n;
 
+	n->scanner = NULL;
+
 	n->game = new_game_conn();
 	n->game->pc = n;
 
@@ -88,6 +93,7 @@ proxy_conn_t *new_proxy_conn() {
 	n->game_db_entry = NULL;
 
 	n->environment = NULL;
+	n->charset = strdup(loci_charset_get_default());
 
 	proxyconns=g_list_append(proxyconns,n);
 
@@ -95,6 +101,9 @@ proxy_conn_t *new_proxy_conn() {
 }
 
 void free_proxy_conn(proxy_conn_t *f) {
+
+	if(f->scanner) free_scan_tbd_entry(f->scanner);
+	f->scanner = NULL;
 
 	if(f->client) free_client_conn(f->client);
 	f->client = NULL;
@@ -109,6 +118,11 @@ void free_proxy_conn(proxy_conn_t *f) {
 	f->game_db_entry = NULL;
 
 	loci_environment_free(f);
+
+	if(f->charset) {
+		free(f->charset);
+		f->charset = NULL;
+	}
 
 	proxyconns=g_list_remove(proxyconns,f);
 
@@ -344,6 +358,8 @@ void loci_proxy_shutdown(proxy_conn_t *pc) {
 
 	if(!pc) return;
 
+	scanner_finalize(pc);
+
 	if(pc->game && pc->game->wsi_game) {
 		loci_game_shutdown(pc);
 		return;
@@ -368,7 +384,10 @@ void loci_client_send_echosga(proxy_conn_t *pc) {
 
 	if(pc->game->data_sent == 0) return;
 
-	int mode = ( ((pc->game->echo_opt & 0x1)<<1) | (pc->game->sga_opt & 0x1));
+	int mode = ( 
+		((loci_game_telopt_active(pc,TELNET_TELOPT_ECHO) & 0x1)<<1) |
+		(loci_game_telopt_active(pc,TELNET_TELOPT_SGA) & 0x1)
+	);
 
 	jobj = json_object_new_int(mode);
 
@@ -382,7 +401,7 @@ void loci_client_send_echosga(proxy_conn_t *pc) {
 
 void loci_client_send_gmcp(proxy_conn_t *pc) {
 
-	if(pc->game && pc->game->gmcp_opt) {
+	if(loci_game_telopt_active(pc,TELNET_TELOPT_GMCP)) { 
 		char module[]="Core.Enable";
 		loci_client_send_cmd(pc,GMCP_DATA,module,strlen(module));
 	} else {
@@ -404,7 +423,7 @@ void loci_client_send_gaeor(proxy_conn_t *pc, const char *msg) {
 
 	if( msg == NULL) {
 		char *status;
-		if(pc->game && pc->game->eor_opt) {
+		if(loci_game_telopt_active(pc,TELNET_TELOPT_EOR)) { 
 			status = "enabled";
 		} else {
 			status = "disabled";
@@ -426,6 +445,8 @@ void loci_client_invalidate_key(proxy_conn_t *pc) {
 	json_object *r;
 	char *jstr;
 
+	if(!pc) return;
+
 	r = json_object_new_object();
 	json_object_object_add(r,"reconnect",json_object_new_string("invalidate"));
 
@@ -443,13 +464,18 @@ void loci_game_send(proxy_conn_t *pc, const char *buffer, size_t size) {
 
 void loci_game_send_gmcp(proxy_conn_t *pc, const char *buffer, size_t size) {
 	if( !(pc && pc->game && pc->game->game_telnet)) return;
-	loci_telnet_send_gmcp(pc->game->game_telnet,buffer,size);
+	if( (loci_game_telopt_active(pc,TELNET_TELOPT_GMCP))) {
+		loci_telnet_send_gmcp(pc->game->game_telnet,buffer,size);
+	}
 }
+
 
 void loci_game_send_naws(proxy_conn_t *pc) {
 	if( !(pc && pc->game && pc->game->game_telnet)) return;
 	if( !(pc && pc->client)) return;
-	loci_telnet_send_naws(pc->game->game_telnet,pc->client->width,pc->client->height);
+	if( (loci_game_telopt_active(pc,TELNET_TELOPT_NAWS))) {
+		loci_telnet_send_naws(pc->game->game_telnet,pc->client->width,pc->client->height);
+	}
 }
 
 /* returns 1 if the watchdog has expired and is barking, 0 otherwise. */
@@ -479,3 +505,174 @@ int loci_proxy_watchdog(proxy_conn_t *pc) {
 	return(0);
 
 }
+
+void loci_proxy_log_status(void) {
+
+	GList *l;
+	proxy_conn_t *pc;
+
+	locid_log("USR1 There are %d active proxy sessions.",g_list_length(proxyconns));
+	for(l = proxyconns;l;l=l->next) {
+		pc = (proxy_conn_t *)(l->data);
+		if(pc->client && pc->game) {
+			locid_log("USR1 [%d] %s (%s) -> %s (%s)",
+				pc->id,
+				(pc->client->hostname)?(pc->client->hostname):"NONE",
+				get_proxy_state_str(get_client_state(pc)),
+				(pc->game->hostname)?(pc->game->hostname):"NONE",
+				get_proxy_state_str(get_game_state(pc))
+			);
+		} else {
+			locid_log("USR1 [%d] (incomplete)",pc->id);
+		}
+	}
+}
+
+void loci_client_send_netstat(proxy_conn_t *pc) {
+
+	json_object *jobj;
+	json_object *cobj;
+	json_object *gobj;
+	json_object *tobj;
+	char *jstr;
+	client_conn_t *cc;
+	game_conn_t *gc;
+	char buf[1024];
+	int ssl;
+
+	if(!pc) return;
+	if(!(cc=pc->client)) return;
+	gc = pc->game;
+
+	jobj = json_object_new_object();
+
+	// client side info
+	cobj = json_object_new_object();
+	json_object_object_add(jobj,"client",cobj);
+
+	json_object_object_add(cobj,"state",
+		json_object_new_string(
+			get_proxy_state_str(get_client_state(pc))
+		)
+	);
+
+	if( !(strcmp(config->client_security ,"ssl") )) {
+		ssl = 1;
+	} else {
+		ssl = 0;
+	}
+
+	json_object_object_add(cobj,"ssl",
+		json_object_new_int(ssl)
+	);
+
+	json_object_object_add(cobj,"host",
+		json_object_new_string(cc->hostname)
+	);
+	json_object_object_add(cobj,"connections",
+		json_object_new_int(cc->connections)
+	);
+
+	iostat_printhuman(buf,sizeof(buf),cc->ios);
+	json_object_object_add(cobj,"data",
+		json_object_new_string(buf)
+	);
+	iostat_printhrate(buf,sizeof(buf),cc->ios);
+	json_object_object_add(cobj,"rate",
+		json_object_new_string(buf)
+	);
+
+
+	// game side info
+	gobj = json_object_new_object();
+	json_object_object_add(jobj,"server",gobj);
+
+	json_object_object_add(gobj,"state",
+		json_object_new_string(
+			get_proxy_state_str(get_game_state(pc))
+		)
+	);
+	if(gc) {
+		if(gc->hostname) {
+			json_object_object_add(gobj,"host",
+				json_object_new_string(gc->hostname)
+			);
+		} else {
+			json_object_object_add(gobj,"host",
+				json_object_new_string("none")
+			);
+		}
+		json_object_object_add(gobj,"port",
+			json_object_new_int(gc->port)
+		);
+		json_object_object_add(gobj,"ssl",
+			json_object_new_int(gc->ssl)
+		);
+		json_object_object_add(gobj,"reconnections",
+			json_object_new_int(gc->reconnections)
+		);
+
+		iostat_printhuman(buf,sizeof(buf),gc->ios);
+		json_object_object_add(gobj,"data",
+			json_object_new_string(buf)
+		);
+		iostat_printhrate(buf,sizeof(buf),gc->ios);
+		json_object_object_add(gobj,"rate",
+			json_object_new_string(buf)
+		);
+
+	}
+
+	// proxy specific stuff
+	json_object_object_add(jobj,"proxycount",
+		json_object_new_int(g_list_length(proxyconns))
+	);
+
+	// telnet protocols
+	if(gc->game_telnet) {
+		tobj = json_object_new_object();
+		int *inq = telnet_option_list(gc->game_telnet);
+		for(int i=0;inq[i]!=-1;i++) {
+			int us, them;
+			if (telnet_check_option(gc->game_telnet,inq[i],&us,&them)) {
+				json_object *cs = json_object_new_object();
+				json_object_object_add(cs,"c",json_object_new_int(us));
+				json_object_object_add(cs,"s",json_object_new_int(them));
+				json_object_object_add(tobj,telopt_name(inq[i]),cs);
+			}
+		}
+		json_object_object_add(jobj,"telnet",tobj);
+	}
+
+	// gmcp?
+
+	// and ship it.
+	jstr = json_object_to_json_string(jobj);
+
+	loci_client_send_cmd(pc,NETSTAT,jstr,strlen(jstr));
+	locid_debug(DEBUG_CLIENT,pc,"send NETSTAT '%s'",jstr);
+
+	json_object_put(jobj);
+
+}
+
+/* command the charset down to the client. */
+void loci_client_send_charset(proxy_conn_t *pc) {
+	loci_client_send_cmd(pc,CHARSET,pc->charset,strlen(pc->charset));
+}
+
+/* command the charset down to the server. */
+void loci_game_send_charset(proxy_conn_t *pc) {
+	loci_charset_send_request(pc);
+}
+
+/* set the charset value in the proxy.  Note that this doesn't inform either
+ * the client or game. Caller should also call loci_client_send_charset or
+ * loci_game_send_charset (or both) depending on the direction required. */
+void loci_proxy_set_charset(proxy_conn_t *pc, const char *charset) {
+	char *s = strdup(charset);
+	if(pc->charset) free(pc->charset);
+	pc->charset = s;
+	loci_environment_update(pc,TELNET_ENVIRON_VAR,"CHARSET",charset);
+}
+

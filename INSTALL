@@ -15,26 +15,24 @@ doesn't have the required options compiled in.  So, you've got to get the code
 from https://libwebsockets.org/repo/libwebsockets and rebuild it.
 
 Note that for the cmake step....
-# -DCMAKE_BUILD_TYPE=DEBUG will make a debug image of libwebsockets. Not normally used.
-# -DLWS_WITHOUT_EXTENSIONS=0 enables permessage deflate, and IS REQUIRED.
 # -DLWS_IPV6=ON because in deb 11 at least, that wasn't the default.
+# -DLWS_WITHOUT_EXTENSIONS=0 enables permessage deflate, and IS REQUIRED by LociTerm
+# -DLWS_WITH_LIBUV=ON to enable libuv loop timers, and IS REQUIRED by LociTerm
+# -DLWS_WITH_EVENT_LIBS=ON to enable event libraries, and IS REQUIRED by LociTerm
+# -DCMAKE_BUILD_TYPE=DEBUG will make a debug image of libwebsockets. Not normally used.
 
 cd ~/othercode
 git clone --branch v4.3.3 https://libwebsockets.org/repo/libwebsockets
 cd libwebsockets
 mkdir build
 cd build
-cmake -DLWS_IPV6=ON -DLWS_WITH_ZLIB=ON -DLWS_WITHOUT_EXTENSIONS=OFF ..
+cmake -DLWS_IPV6=ON -DLWS_WITH_ZLIB=ON -DLWS_WITHOUT_EXTENSIONS=OFF -DLWS_WITH_LIBUV=ON -DLWS_WITH_EVENT_LIBS=ON ..
 make
 sudo make install
 
-Thu Nov 21 04:22:52 PM EST 2024
-ACK.  libwebsockets main (not v4.3-stable) is broken for permessage-deflate
-https://github.com/warmcat/libwebsockets/issues/3151
-
-git revert c60bff09914b02c320ce87898a95e2f85e228af7
-I also think v4.3-stable has a problem with tls and raw sockets. :/
-
+Tue Mar 11 12:48:46 AM EDT 2025
+NOTE, libwebsockets main is working again as of commit
+ef4a85d0e14270e83ce74213a0b4bb53e29a07be.  I mostly use the main branch.  -jsj
 
 
 2. Building LOciTerm

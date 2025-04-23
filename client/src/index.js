@@ -32,7 +32,6 @@ import lociThemes from './themes.json';
 
 import { LociTerm } from './lociterm.js';
 
-
 // lociTermBegin();
 
 const terminal = new LociTerm(
@@ -65,4 +64,3 @@ if((document.location.search || '') != '') {
 // Let the games begin.
 // open it up and go.
 terminal.connect(websocket_url);
-

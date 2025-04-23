@@ -21,8 +21,12 @@
 	--menuside-close-bottom: -100%;
 	--menuside-close-left: unset;
 	--menuside-close-right: -100%;
-}
 
+	--terminal-margin: 0%;
+	--terminal-sb-display: flex;
+	--terminal-sb-width: none;
+	--terminal-sb-visibility: hidden;
+}
 
 .menuhandler {
 	justify-content: center;
@@ -38,7 +42,7 @@
 #menubox {
 	bottom: var(--bgridAnchor-bottom);
 	left: var(--bgridAnchor-left);
-	margin: 1em;
+	margin: calc(var(--finger-size)/3.0);
 	opacity: var(--menufade-hidden);
 	position: absolute;
 	right: var(--bgridAnchor-right);
@@ -281,8 +285,10 @@
 	max-width: 80%;
 	overflow: auto;
 	padding: calc(var(--finger-size)/2.0);
+	padding-top: calc(var(--finger-size)/4.0);
 	position: relative;
 	/* text-transform: capitalize;*/
+	min-width: 33%;
 }
 
 .menupop .genericcheckbox {
@@ -330,29 +336,46 @@
 	aspect-ratio: auto;
 }
 
+div.stdlink {
+	display: flex;
+	align-items: center;
+	min-height: var(--finger-size);
+	justify-content: center;
+	column-gap: 0.5em;
+	flex-wrap: wrap;
+}
+
+a.stdlink {
+	color: var(--book-link-color);
+}
+
+label.stdlink {
+}
+
 .gameabout {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 }
 
-.gameabout a {
+a.gameabout {
 	min-height: var(--finger-size);
 	color: var(--book-link-color);
 }
 
-.gameabout figure {
+figure.gameabout {
 	display: grid;
 	justify-items: center;
 }
 
-.gameabout button {
+button.gameabout {
 	width: 90%;
 }
 
-.gameabout div {
+div.gameabout {
 }
 
+	
 .gamename {
 	font-weight: bold;
 	font-size: calc(var(--font-size) * 1.1);
@@ -388,6 +411,11 @@
 	width: 100%;
 }
 
+.menupop ul {
+	list-style: none;
+	margin-block-start: 0em;
+}
+
 .close {
 	position: absolute;
 	right: 2mm;
@@ -398,7 +426,7 @@
 	min-height: var(--finger-size);
 	min-width: var(--finger-size);
 	display: flex;
-	justify-content: center;
+	justify-content: flex-end;
 	align-items: center;
 }
 
@@ -407,6 +435,28 @@
   color: red;
   cursor: pointer;
 }
+
+.menupop .titlebar {
+    color: var(--book-cover-color);
+    font-weight: bold;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0px;
+    min-height: var(--finger-size);
+    width: 100%;
+    border-bottom: var(--book-cover-color);
+    border-bottom-width: 0.5mm;
+    /*border-bottom-style: solid;*/
+}
+
+.menupop .titlebar .close {
+	position: relative;
+	/* right: 2mm; */
+	/* top: 0; */
+}
+
 
 
 .menufield {
@@ -430,7 +480,6 @@
 	min-width: 16em;
 	overflow-y: auto;
 	margin: 1mm;
-	margin-bottom: 1em;
 }
 
 .gamelist tr {
@@ -461,3 +510,48 @@
 .hotkeymacro textarea {
 	background: var(--book-altpaper-color);
 }
+
+.generic_details {
+    align-content: center;
+	
+	min-height: calc(var(--finger-size)/1.0);
+	min-width: calc(var(--finger-size)/1.0);
+	font-size: var(--font-size);
+	background: var(--book-altpaper-color);
+	border-color: var(--book-cover-color);
+	border-radius: calc(var(--finger-size)/4.0);
+	border-style: solid;
+	color: var(--book-text-color);
+	border-width: 1px;
+	margin: 0.5mm;
+}
+
+.generic_details:open {
+	background: var(--book-paper-color);
+	overflow-x: auto;
+}
+
+.generic_details > summary {
+	align-content: center;
+	min-height: calc(var(--finger-size)/1.0);
+	min-width: calc(var(--finger-size)/1.0);
+	border-radius: calc(var(--finger-size)/4.0);
+	border-width: 0 0 0.5mm 0;
+	background: var(--book-altpaper-color);
+}
+
+.generic_details > summary::marker {
+	color: var(--book-cover-color);
+}
+
+.generic_details > table {
+	width: 100%;
+}
+
+.generic_details > table > tr {
+	background: var(--book-altpaper-color);
+}
+.generic_details > table > tr:nth-child(1) {
+	background: var(--book-paper-color);
+}
+

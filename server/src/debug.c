@@ -28,12 +28,38 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <glib.h>
 
 #include "debug.h"
 
 unsigned int global_debug_facility = DEBUG_OFF;
 
 FILE *locid_logfile;
+
+const gchar *debug_names[DEBUG_MAX] = {
+	"break",
+	"log",
+	"client",
+	"game",
+	"mssp",
+	"lws",
+	"telnet",
+	"db",
+	"eventno",
+	"proxy",
+	"scan"
+};
+
+void set_debug_from_strvec(gchar **vec) {
+
+	global_debug_facility = DEBUG_OFF;
+
+	for(int i=0;i<DEBUG_MAX;i++) {
+		if(g_strv_contains((const gchar* const *)vec,debug_names[i])) {
+			global_debug_facility |= (1<<i);
+		}
+	}
+}
 
 void locid_log_init(char *pathname) {
 	FILE *out;

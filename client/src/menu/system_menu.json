@@ -40,12 +40,12 @@
 					"open": "sys_game_select"
 				},
 				{
-					"label": "Theme",
+					"label": "User Interface",
 					"open": "sys_settings"
 				},
 				{
-					"label": "CRT Filter",
-					"open": "sys_filters"
+					"label": "Terminal",
+					"open": "sys_termsettings"
 				},
 				{
 					"label": "Hotkey Editor",
@@ -66,6 +66,10 @@
 				{
 					"label": "Game",
 					"open": "sys_game_about"
+				},
+				{
+					"label": "Network",
+					"open": "sys_netstat"
 				}
 			]
 		},

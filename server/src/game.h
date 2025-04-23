@@ -35,18 +35,20 @@ typedef struct game_conn {
 	GQueue *game_q;					/* Game side data queue */
 	telnet_t *game_telnet;			/* telnet protocol tracker */
 	gchar *uuid;					/* reconnect key for this game connection. */
+	char *hostname;					/* for consistency with client */
+	int port;						/* for ease of access */
+	int ssl;						/* for ease of access */
 
 	struct iostat_data *ios;		/* iostat structure for bytes in/out */
 
 	int check_wait;					/* Protocol verification timer */
 	int check_protocol;				/* Protocol verification flags */
+	
+	int request_mssp;				/* include mssp in connection request? */
 
 	int ttype_state;				/* */
-	int echo_opt;					/* Is game server providing echo? */
-	int sga_opt;					/* Is game server supressing the GA protocol? */
-	int eor_opt;					/* Is game server sending EOR? */
-	int gmcp_opt;					/* Is game server sending GMCP? */
 	int data_sent;
+	int reconnections;
 
 	proxy_conn_t *pc;				/* pointer to parent proxy context. */
 	
@@ -60,6 +62,8 @@ void free_game_conn(game_conn_t *f);
 
 
 void loci_game_write(proxy_conn_t *pc, char *in, size_t len);
+int loci_game_telopt_active(proxy_conn_t *pc,uint8_t telopt);
+void loci_game_charset_apply(proxy_conn_t *pc,const char *charset, int inform_server);
 
 int callback_loci_game(
 	struct lws *wsi, enum lws_callback_reasons reason,

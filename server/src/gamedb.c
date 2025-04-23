@@ -33,6 +33,8 @@
 #include "locid.h"
 #include "debug.h"
 #include "libtelnet.h"
+#include "telnet.h"
+#include "scan.h"
 
 #include "gamedb.h"
 
@@ -54,7 +56,7 @@ char *dbstatus_str[] = {
 };
 
 /* database_version doesn't have to go up by 1, but it must never go down. */
-int database_version = 241026;
+int database_version = 251825;
 
 char database_definition[] = \
 	"CREATE TABLE IF NOT EXISTS DBVERSION ( "
@@ -76,18 +78,44 @@ char database_definition[] = \
 		"CREATED DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
 		"LAST_CONNECTION DATETIME, "
 		"LAST_MSSP DATETIME, "
-		"LAST_UPDATE DATETIME, "
+		"GAME_UPDATED DATETIME, "
 		"WEBSITE TEXT, "
 		"ICON TEXT, "
-		"MSSP JSONB, "
 		"SUGGESTED_BY TEXT, "
 		"UNIQUE (HOST, PORT, SSL), "
 		"FOREIGN KEY(STATUS) REFERENCES GAMEDBSTATUS(ID) "
-	");";
+	");"
+	"CREATE TABLE IF NOT EXISTS MSSP ( "
+		"ID INTEGER NOT NULL PRIMARY KEY, "
+		"GAME INTEGER NOT NULL, "
+		"CREATED DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+		"MSSP JSONB, "
+		"FOREIGN KEY(GAME) REFERENCES GAMEDB(ID) "
+	");"
+	"CREATE TABLE IF NOT EXISTS SCAN ( "
+		"GAME INTEGER NOT NULL PRIMARY KEY, "
+		"LASTSCAN DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+		"STATUS INTEGER NOT NULL DEFAULT 2, "
+		"FOREIGN KEY(GAME) REFERENCES GAMEDB(ID),"
+		"FOREIGN KEY(STATUS) REFERENCES GAMEDBSTATUS(ID) "
+	");"
+	"CREATE TABLE IF NOT EXISTS TELOPTS ( "
+		"GAME INTEGER NOT NULL, "
+		"TELOPT INTEGER, "
+		"US INTEGER NOT NULL, "
+		"THEM INTEGER NOT NULL, "
+		"FOREIGN KEY(GAME) REFERENCES GAMEDB(ID) "
+	");"
+	"CREATE TABLE IF NOT EXISTS TELOPT_NAMES ( "
+		"TELOPT INTEGER NOT NULL PRIMARY KEY, "
+		"NAME TEXT "
+	");"
+	;
 
 /* local function declarations */
 int game_db_port_is_banned(int port);
 int game_db_exec(proxy_conn_t *pc,char *sqlstr);
+int game_db_is_mssp_updated(proxy_conn_t *pc);
 
 /* Creates a new DB if configured one can't be opened. */
 int game_db_init(char *filename) {
@@ -250,18 +278,28 @@ json_object *game_db_gamelookup(char *host, int port, int ssl) {
 	}
 
 	sqlstr = sqlite3_mprintf(
-		"SELECT DISTINCT JSON_OBJECT( \
-			'id',ID, \
-			'host',HOST,'port',PORT,'ssl',SSL, \
-			'default_game',default_game, \
-			'icon',icon, \
-			'status',status \
-		) FROM GAMEDB \
-			WHERE \
-			HOST IS %Q COLLATE NOCASE AND \
-			PORT IS %d AND \
-			SSL IS %d \
-		;",
+		"SELECT DISTINCT JSON_OBJECT( "
+			"'id',ID, "
+			"'host',HOST,'port',PORT,'ssl',SSL, "
+			"'default_game',default_game, "
+			"'icon',ICON, "
+			"'status',STATUS "
+		") FROM ( "
+			"select "
+				"g.id, "
+				"host,port,ssl, "
+				"MAX(m.created), "
+				"default_game, "
+				"COALESCE( g.ICON, json_extract(m.mssp,'$.ICON')) as ICON, "
+				"status "
+			"FROM GAMEDB as g "
+			"LEFT JOIN MSSP AS m on g.ID == m.game "
+			"WHERE "
+				"HOST IS %Q COLLATE NOCASE AND "
+				"PORT IS %d AND "
+				"SSL IS %d "
+		") "
+		"WHERE STATUS IS NOT NULL;",
 		host,port,ssl
 	);
 
@@ -469,7 +507,6 @@ int game_db_exec(proxy_conn_t *pc,char *sqlstr) {
 		return(ret);
 	}
 
-
 	if ( (ret=sqlite3_exec(db, sqlstr, NULL, NULL, &errmsg)) != SQLITE_OK ) {
 		locid_debug(DEBUG_DB,pc,"Ooops. '%s' -> %s",sqlstr, errmsg);
 		if(errmsg) sqlite3_free(errmsg);
@@ -484,50 +521,59 @@ int game_db_exec(proxy_conn_t *pc,char *sqlstr) {
 int game_db_update_mssp(proxy_conn_t *pc) {
 
 	char *sqlstr=NULL;
+	int ret;
 	int id = json_object_get_int(json_object_object_get(pc->game_db_entry,"id"));
 
 	if(id == 0) return(-1);
 
-	/* TODO - This is where you sould get the stored MSSP, compare it to the new MSSP,
-	 * and update the LAST_UPDATE time if needed. */
+	/* Check updated status before replacing the db's most recent mssp.  Its
+	 * just easier to get at the most recent one before replacing it. :) */
+	int updated = game_db_is_mssp_updated(pc);
 
-	/* store the new MSSP data. */
+	/* Regardless of update status, store the current MSSP data.  The update
+	 * status only triggers on certain fields, and it ignores others, like
+	 * PLAYER count for example.  I want to keep all of the mssp data for
+	 * posterity in case I decide to do something else with it later.
+	 * (Although probably not with PLAYER count, because it is a misleading
+	 * stat and is commonly manipulated. */
+	sqlstr = sqlite3_mprintf(
+		"INSERT INTO MSSP "
+			"(GAME,MSSP) "
+			"VALUES (%d,%Q) "
+		";",
+		id,
+		json_object_to_json_string(pc->mssp)
+	);
+	ret = game_db_exec(pc,sqlstr);
+	sqlite3_free(sqlstr);
+	if(ret != SQLITE_OK) return(ret);
 
-	if (game_db_get_default_game(pc) == 1) {
-		/* don't override the name. */
+	/* Update the game entry with the date (for easy lookup later.) */
+	sqlstr = sqlite3_mprintf(
+		"UPDATE GAMEDB SET "
+			"LAST_MSSP = CURRENT_TIMESTAMP "
+			"WHERE ID IS %d "
+		";",
+		id
+	);
+	ret = game_db_exec(pc,sqlstr);
+	sqlite3_free(sqlstr);
+	if(ret != SQLITE_OK) return(ret);
+
+	/* Update the game entry with the date (for fast lookup later.) */
+	if(updated) {
 		sqlstr = sqlite3_mprintf(
 			"UPDATE GAMEDB SET "
-				"LAST_MSSP = CURRENT_TIMESTAMP, "
-				"WEBSITE = %Q, "
-				"ICON = %Q, "
-				"MSSP = %Q "
+				"GAME_UPDATED = CURRENT_TIMESTAMP "
 				"WHERE ID IS %d "
 			";",
-			json_object_get_string(json_object_object_get(pc->mssp,"WEBSITE")),
-			json_object_get_string(json_object_object_get(pc->mssp,"ICON")),
-			json_object_to_json_string(pc->mssp),
 			id
 		);
-	} else {
-		sqlstr = sqlite3_mprintf(
-			"UPDATE GAMEDB SET "
-				"LAST_MSSP = CURRENT_TIMESTAMP, "
-				"NAME = %Q, "
-				"WEBSITE = %Q, "
-				"ICON = %Q, "
-				"MSSP = %Q "
-				"WHERE ID IS %d "
-			";",
-			json_object_get_string(json_object_object_get(pc->mssp,"NAME")),
-			json_object_get_string(json_object_object_get(pc->mssp,"WEBSITE")),
-			json_object_get_string(json_object_object_get(pc->mssp,"ICON")),
-			json_object_to_json_string(pc->mssp),
-			id
-		);
+		ret = game_db_exec(pc,sqlstr);
+		sqlite3_free(sqlstr);
+		if(ret != SQLITE_OK) return(ret);
 	}
 
-	int ret = game_db_exec(pc,sqlstr);
-	sqlite3_free(sqlstr);
 	return(ret);
 
 }
@@ -586,18 +632,34 @@ json_object *game_db_get_server_list(void) {
 				"'host',HOST, "
 				"'port',PORT, "
 				"'ssl', SSL, "
-				"'icon', ICON, "
 				"'default_game', DEFAULT_GAME, "
-				"'last_update', LAST_UPDATE "
-			") FROM GAMEDB "
-			"WHERE "
-			"(STATUS IS %d) "
-			"ORDER BY "
-				"DEFAULT_GAME DESC, "
-				"STATUS, "
-				"LAST_CONNECTION DESC, "
-				"SSL DESC"
-			";",
+				"'updated', UPDATED "
+			") FROM ( "
+				"SELECT "
+					"MAX(m.created), "
+					"COALESCE( g.NAME, json_extract(m.mssp,'$.NAME')) as NAME, "
+					"HOST, "
+					"PORT, "
+					"SSL, "
+					"DEFAULT_GAME, "
+					"IIF( (UNIXEPOCH(CURRENT_TIMESTAMP)-UNIXEPOCH(GAME_UPDATED))/3600 <= %d ,1,0) "
+						"as UPDATED "
+				"FROM GAMEDB AS g "
+				"LEFT JOIN MSSP AS m on g.ID == m.GAME "
+				"WHERE "
+					"(STATUS IS %d) "
+					"AND ( (json_extract(m.mssp,'$.NAME') IS NULL) OR "
+						"json_extract(m.mssp,'$.NAME') collate nocase "
+						"NOT IN ('mygame','none') "
+					") "
+				"GROUP BY g.ID "
+				"ORDER BY "
+					"DEFAULT_GAME DESC, "
+					"UPDATED DESC, "
+					"(LAST_MSSP IS NULL) asc, "
+					"LAST_CONNECTION DESC "
+			");",
+			config->mssp_recently_updated,
 			DBSTATUS_APPROVED
 		);
 
@@ -614,6 +676,17 @@ json_object *game_db_get_server_list(void) {
 
 		while (sqlite3_step(stmt) != SQLITE_DONE) {
 			dobj = json_tokener_parse((const char*)sqlite3_column_text(stmt, 0));
+			/* since this is going over the network, remove any zero or null fields. */
+			json_object_object_foreach(dobj,key,val) {
+				if(json_object_get_type(val) == json_type_int) {
+					if(json_object_get_int(val) == 0) {
+						json_object_object_del(dobj,key);
+					}
+				}
+				if(json_object_get_type(val) == json_type_null) {
+					json_object_object_del(dobj,key);
+				}
+			}
 
 			json_object_array_add( aobj, dobj );
 		}
@@ -633,6 +706,94 @@ json_object *game_db_get_server_list(void) {
 	);
 
 	return(jobj);
+}
+
+/* return 1 if one of the important vars is updated, 0 otherwise */
+int game_db_is_mssp_updated(proxy_conn_t *pc) {
+
+	sqlite3 *db;
+	sqlite3_stmt *stmt;
+	json_object *jobj=NULL;
+	char *sqlstr=NULL;
+	int id = json_object_get_int(json_object_object_get(pc->game_db_entry,"id"));
+	int ret=0;
+
+	if ( (sqlite3_open(config->db_location, &db) != SQLITE_OK) ) {
+		locid_debug(DEBUG_DB,NULL,"Ooops.  %s",sqlite3_errmsg(db));
+		return(0);
+	}
+
+	/* grab the most current saved mssp blob */
+	sqlstr = sqlite3_mprintf(
+		"SELECT MSSP FROM ("
+			"SELECT MAX(CREATED), MSSP "
+			"FROM MSSP "
+			"WHERE GAME IS %d"
+		");",
+		id
+	);
+
+	if ( (sqlite3_prepare(db,sqlstr,-1,&stmt,NULL) != SQLITE_OK) ){
+		locid_debug(DEBUG_DB,NULL,"Ooops.  %s",sqlite3_errmsg(db));
+		sqlite3_free(sqlstr);
+		sqlite3_close(db);
+		return(0);
+	}
+
+	int row=0;
+	while (sqlite3_step(stmt) != SQLITE_DONE) {
+		locid_debug(DEBUG_DB,NULL,"Row %d, has %d columns",
+			row,
+			sqlite3_column_count(stmt)
+		);
+		locid_debug(DEBUG_DB,NULL,"%s",sqlite3_column_text(stmt, 0));
+		if(sqlite3_column_text(stmt, 0)) {
+			jobj = json_tokener_parse((const char*)sqlite3_column_text(stmt, 0));
+		}
+	}
+
+	if(!jobj) {
+		/* there was no mssp data saved. */
+		locid_debug(DEBUG_MSSP,NULL,"No previous data =1");
+		return(1);
+	}
+
+	sqlite3_free(sqlstr);
+	sqlite3_finalize(stmt);
+	sqlite3_close(db);
+
+	/* jobj has the data now compare the important fields. If any one is
+	 * different, return 1 */
+	gchar **fields = config->mssp_notable_fields;
+
+	for(int i=0;fields[i];i++) {
+		char *a = json_object_get_string(json_object_object_get(jobj,fields[i]));
+		char *b = json_object_get_string(json_object_object_get(pc->mssp,fields[i]));
+
+		locid_debug(DEBUG_DB,NULL,
+			"Checking MSSP '%s'",
+			fields[i]
+		);
+		if( !a && !b ) continue;
+
+		if( (!a || !b ) ||
+			(strcmp(a,b) != 0)
+		) {
+			ret = 1;
+			locid_debug(DEBUG_DB,NULL,
+				"MSSP differed in %s, '%s'->'%s'",
+				fields[i],a,b
+			);
+			/*break;*/ 
+		}
+	}
+
+	/* dont forget to clean up the jobj. */
+	json_object_put(jobj);
+	locid_debug(DEBUG_MSSP,NULL," =%d",ret);
+
+	return(ret);
+	
 }
 
 json_object *game_db_mssplookup(char *host, int port, int ssl) {
@@ -658,21 +819,34 @@ json_object *game_db_mssplookup(char *host, int port, int ssl) {
 	}
 
 	sqlstr = sqlite3_mprintf(
-		"SELECT DISTINCT JSON_OBJECT("
+		"SELECT DISTINCT JSON_OBJECT( "
 			"'name',NAME, "
 			"'host',HOST, "
 			"'port',PORT, "
-			"'ssl', SSL, "
-			"'icon', ICON, "
-			"'default_game', DEFAULT_GAME, "
-			"'last_update', LAST_UPDATE, "
+			"'ssl',SSL, "
+			"'icon',ICON, "
+			"'default_game',DEFAULT_GAME, "
+			"'game_updated',GAME_UPDATED, "
 			"'mssp',MSSP "
-		") FROM GAMEDB "
+		") AS jobj FROM ( "
+			"SELECT "
+				"g.ID as ID, "
+				"MAX(m.CREATED), "
+				"COALESCE( g.NAME, json_extract(m.mssp,'$.NAME')) as NAME, "
+				"HOST, "
+				"PORT, "
+				"SSL, "
+				"COALESCE( g.ICON, json_extract(m.mssp,'$.ICON')) as ICON, "
+				"DEFAULT_GAME, "
+				"GAME_UPDATED, "
+				"MSSP "
+			"FROM GAMEDB AS g "
+			"LEFT JOIN MSSP AS m ON g.ID == m.GAME "
 			"WHERE "
 			"HOST IS %Q COLLATE NOCASE AND "
 			"PORT IS %d AND "
 			"SSL IS %d "
-		";",
+		");",
 		host,port,ssl
 	);
 
@@ -683,13 +857,7 @@ json_object *game_db_mssplookup(char *host, int port, int ssl) {
 		return(NULL);
 	}
 
-	int row=0;
-	while (sqlite3_step(stmt) != SQLITE_DONE) {
-		locid_debug(DEBUG_DB,NULL,"Row %d, has %d columns",
-			row,
-			sqlite3_column_count(stmt)
-		);
-		locid_debug(DEBUG_DB,NULL,"%s",sqlite3_column_text(stmt, 0));
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		jobj = json_tokener_parse((const char*)sqlite3_column_text(stmt, 0));
 	}
 
@@ -855,4 +1023,144 @@ int game_db_get_version(void) {
 	sqlite3_close(db);
 
 	return(dbversion);
+}
+
+
+/* based on config and game db id.  returns 1 if connection should probe, 0 if
+ * the mssp request can be supressed.  */
+int game_db_should_request_mssp(int gameid) {
+
+	sqlite3 *db;
+	sqlite3_stmt *stmt;
+	char *sqlstr;
+	int lastmssp = 0;
+	int ret = 1;
+	int crawl_delay=0;
+
+	/* if the db isn't in use, grab the mssp because we have no lasting memory
+	 * of it.  The data can still be used to display 'About Game' information to
+	 * the client. */
+	if(!config->db_inuse) { 
+		return(1);
+	}
+
+	/* if the configured crawl delay is 0, then always request.  No more work
+	 * is required.*/
+	if((config->mssp_crawl_delay) <= 0) {
+		return(1);
+	}
+
+	if ( (sqlite3_open(config->db_location, &db) != SQLITE_OK) ) {
+		locid_debug(DEBUG_DB,NULL,"Ooops.  %s",sqlite3_errmsg(db));
+		return(1); /* Doh, no memory of it.  grab it. */
+	}
+
+	/* From this point on, don't simply return without cleanup! Set the ret
+	 * value as needed, and fall through.*/
+	ret = 1;  /* 1 is to request. */
+
+	sqlstr = sqlite3_mprintf(
+		"SELECT unixepoch(LAST_MSSP) from GAMEDB "
+		"WHERE ID IS %d;",
+		gameid
+	);
+
+	/* fetch the lastmssp time stamp. */
+	if ( (sqlite3_prepare(db,sqlstr,-1,&stmt,NULL) == SQLITE_OK) ){
+		while (sqlite3_step(stmt) == SQLITE_ROW) {	
+			lastmssp = sqlite3_column_int(stmt,0);
+		}
+		sqlite3_finalize(stmt);
+	}
+
+	if(lastmssp > 0) {
+		/* if you want to respect the server's preferred 'CRAWL DELAY', you can
+		 * check for that here with another db lookup, and update craw_delay to
+		 * the larger of our config and the game's preference  However, there
+		 * are so few servers that have any preference larger than 1 that I'm
+		 * not implementing it yet. */
+		crawl_delay = config->mssp_crawl_delay;
+
+		int now = time(0);
+		int age = (now - lastmssp)/3600;
+		if( age < crawl_delay) {
+			locid_debug(DEBUG_MSSP,NULL,
+				"Data is fresh for %d more hours.",
+				crawl_delay-age
+			);
+			ret = 0; /* No need to request, the data is fresh enough! */
+		}
+	} else {
+		ret = 1; /* no data, so request it. */
+	}
+
+	/* cleanup: */
+	sqlite3_free(sqlstr);
+	sqlite3_close(db);
+	return(ret);
+
+}
+
+int game_db_clear_telopts(proxy_conn_t *pc, int gameid) {
+	
+	char *sqlstr;
+	int ret;
+
+	sqlstr = sqlite3_mprintf(
+		"DELETE FROM TELOPTS WHERE "
+			"GAME is %d "
+		";",
+		gameid
+	);
+	ret = game_db_exec(pc,sqlstr);
+	sqlite3_free(sqlstr);
+	return(ret);
+}
+
+
+int game_db_update_telopt(proxy_conn_t *pc, int gameid, uint8_t telopt, int us, int them) {
+
+	char *sqlstr;
+	int ret;
+
+	sqlstr = sqlite3_mprintf(
+		"INSERT INTO TELOPTS "
+			"(GAME,TELOPT,US,THEM) "
+			"VALUES (%d,%d,%d,%d) "
+		";",
+		gameid,
+		telopt,
+		us,
+		them
+	);
+	ret = game_db_exec(pc,sqlstr);
+	sqlite3_free(sqlstr);
+	return(ret);
+}
+
+int game_db_update_telopt_name(uint8_t telopt,char *name) {
+
+	char *sqlstr;
+	int ret;
+
+	sqlstr = sqlite3_mprintf(
+		"INSERT INTO TELOPT_NAMES"
+			"(TELOPT, NAME) "
+			"VALUES (%d,%Q) "
+			"ON CONFLICT(TELOPT) DO UPDATE SET NAME=excluded.name "
+		";",
+		telopt,
+		name
+	);
+	ret = game_db_exec(NULL,sqlstr);
+	sqlite3_free(sqlstr);
+	return(ret);
+}
+
+void game_db_update_telopt_names(void) {
+
+	for(int i=0;i<=255;i++) {
+		game_db_update_telopt_name(i,telopt_name(i));
+	}
+
 }

@@ -102,6 +102,7 @@ class HotkeyHandler {
 			`${id}_select`,
 			"Hotkey", 
 			this.hotkey_defaults,
+			0,
 			((e)=>{ this.updateToEditor(id); })
 		)
 		content.appendChild(l);

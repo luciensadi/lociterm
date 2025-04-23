@@ -33,6 +33,7 @@
 #include "telnet.h"
 #include "gamedb.h"
 #include "iostats.h"
+#include "scan.h"
 
 #include "game.h"
 
@@ -43,6 +44,7 @@
 /* locals */
 
 /* functions */
+void loci_game_update_telopts(proxy_conn_t *pc);
 
 game_conn_t *new_game_conn(void) {
 	game_conn_t *n;
@@ -58,17 +60,18 @@ game_conn_t *new_game_conn(void) {
 	n->game_telnet = NULL;
 	n->uuid = g_uuid_string_random();
 	n->ttype_state = 0;
+	n->hostname = NULL;
+	n->port = 0;
+	n->ssl = 0;
 
 	n->ios = iostat_new();
 
 	n->check_wait = 0;
 	n->check_protocol = 0;
-	n->echo_opt = 0;
-	n->sga_opt = 0;
-	n->eor_opt = 0;
-	n->gmcp_opt = 0;
+	n->request_mssp = 0;
 	n->data_sent = 0;
-	
+	n->reconnections = 0;
+
 	return(n);
 }
 
@@ -91,14 +94,16 @@ void free_game_conn(game_conn_t *f) {
 		f->game_telnet = NULL;
 	}
 
+	if(f->hostname) {
+		free(f->hostname);
+		f->hostname = NULL;
+	}
+
 	if(f->uuid) g_free(f->uuid);
 	f->uuid = NULL;
 
 	if(f->ios) iostat_free(f->ios);
 	f->ios = NULL;
-
-	f->echo_opt = 0;
-	f->sga_opt = 0;
 
 	f->pc = NULL;
 	free(f);
@@ -171,16 +176,18 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 		if(game_db_get_status(pc) == DBSTATUS_NOT_CHECKED) {
 			game_db_update_status(pc,DBSTATUS_NO_ANSWER);
 		}
+		scanner_update_status(pc,DBSTATUS_NO_ANSWER);
 		pc->game->wsi_game = NULL;
 		set_game_state(pc,PRXY_INIT);
 		/* close the websocket side, rather than hang... */
-		loci_client_shutdown(pc);
+		// loci_client_shutdown(pc);
+		loci_proxy_shutdown(pc);
 		break;
 
 	case LWS_CALLBACK_CONNECTING:
 		locid_debug(DEBUG_LWS,pc,"LWS_CALLBACK_CONNECTING");
 		set_game_state(pc,PRXY_CONNECTING);
-		pc->game->echo_opt = pc->game->sga_opt = pc->game->data_sent = 0;
+		pc->game->data_sent = 0;
 		break;
 
 	case LWS_CALLBACK_WSI_CREATE:
@@ -202,7 +209,10 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 	case LWS_CALLBACK_RAW_CONNECTED:
 		locid_debug(DEBUG_LWS,pc,"LWS_CALLBACK_RAW_CONNECTED");
 		locid_info(pc,"Game side connected.");
-		game_db_update_lastconnection(pc);
+		/* update last connection if this isn't a locibot run. */
+		if(!(pc->scanner)) {
+			game_db_update_lastconnection(pc);
+		}
 		loci_telnet_init(pc->game);
 		if(pc->game->check_protocol || pc->game->check_wait) {
 			locid_info(pc,"Blocking for protocol check.");
@@ -213,6 +223,7 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 			if(game_db_get_status(pc) == DBSTATUS_NOT_CHECKED) {
 				game_db_update_status(pc,DBSTATUS_APPROVED);
 			}
+			scanner_update_status(pc,DBSTATUS_APPROVED);
 			set_game_state(pc,PRXY_UP);
 			loci_client_send_echosga(pc);
 		}
@@ -224,6 +235,12 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 		if(!pc) return(-1);
 		locid_debug(DEBUG_LWS,pc,"LWS_CALLBACK_RAW_CLOSE\n");
 
+		/* save all of the telnet options that were seen. */
+		if(pc->game && pc->game->request_mssp) {
+			loci_game_update_telopts(pc);
+		}
+
+		/* log the iostats. */
 		char buf[1024];
 		iostat_printhuman(buf,sizeof(buf),pc->game->ios);
 		locid_info(pc,"game closed: %s",buf);
@@ -259,6 +276,7 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 			/* a security check was in process, but the connection has closed
 			 * without passing.*/
 			game_db_update_status(pc,DBSTATUS_BAD_PROTOCOL);
+			scanner_update_status(pc,DBSTATUS_BAD_PROTOCOL);
 			locid_info(pc,"game didn't meet protocol requirements.");
 		}
 
@@ -296,6 +314,7 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 				pc->game->check_wait = 0;
 				locid_debug(DEBUG_TELNET,pc,"All protocol checks PASSED, unblocking.");
 				game_db_update_status(pc,DBSTATUS_APPROVED);
+				scanner_update_status(pc,DBSTATUS_APPROVED);
 				locid_info(pc,"game passed protocol requirements.");
 				set_game_state(pc,PRXY_UP);
 			}
@@ -351,6 +370,11 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 			loci_proxy_shutdown(pc);
 		}
 
+		/* but... if this was a scanner initiated connection, close it down. */
+		if(pc->scanner) {
+			loci_proxy_shutdown(pc);
+		}
+
 		break;
 	}
 
@@ -359,5 +383,56 @@ int callback_loci_game(struct lws *wsi, enum lws_callback_reasons reason,
 	}
 
 	return 0;
+}
+
+/* did the other side agree to the telopt protocol? */
+int loci_game_telopt_active(proxy_conn_t *pc,uint8_t telopt) {
+
+	game_conn_t *gc;
+
+	if(!pc) return(0);
+	if(!(gc=pc->game)) return(0);
+	if(!(gc->game_telnet)) return(0);
+	
+	int them = 0;
+	int us = 0;
+	telnet_check_option(gc->game_telnet,telopt,&us,&them);
+	if((us == 1) || (them == 1)) {
+		return(1);
+	}
+	return(0);
+	
+}
+
+void loci_game_update_telopts(proxy_conn_t *pc) {
+
+	game_conn_t *gc = pc->game;
+	int us,them;
+	int count=0;
+
+	if(config->db_inuse != 1) { 
+		return;
+	}
+	
+	int id = json_object_get_int(json_object_object_get(pc->game_db_entry,"id"));
+	game_db_clear_telopts(pc,id);
+
+	int *inq = telnet_option_list(gc->game_telnet);
+	for(int i=0;inq[i]!=-1;i++) {
+		int telopt = inq[i];
+		if (telnet_check_option(gc->game_telnet,telopt,&us,&them)) {
+			locid_debug(DEBUG_TELNET,pc,
+				"'%s' us=%d them=%d\n",
+				telopt_name(telopt),
+				us,them
+			);
+			game_db_update_telopt(pc,id,telopt,us,them);
+		}
+		count++;
+	}
+	if(count == 0) {
+		locid_debug(DEBUG_TELNET,pc,"Game spoke NO telnet.");
+	}
+	free(inq);
 }
 

@@ -210,12 +210,27 @@ int loci_connect_to_game_host(proxy_conn_t *pc, char *hostname, int port, int ss
 		json_object_put(pc->game_db_entry);
 	}
 	pc->game_db_entry = game_db_gamelookup(hostname,port,ssl);
+	
+	if(pc->game_db_entry) {
+		int gameid = json_object_get_int(json_object_object_get(pc->game_db_entry,"id"));
+		pc->game->request_mssp = game_db_should_request_mssp(gameid);
+	} else {
+		pc->game->request_mssp = 1;
+	}
+
+	if(pc->game->hostname) free(pc->game->hostname);
+	pc->game->hostname = strdup(hostname);
+	pc->game->port = port;
+	pc->game->ssl = ssl;
 
 	/* lws example code likes to clear out structures before use */
 	memset(&info, 0, sizeof(info));
 
 	info.method = "RAW";
-	info.context = lws_get_context(pc->client->wsi_client);
+	//info.context = lws_get_context(pc->client->wsi_client);
+
+	info.context = locid_get_default_lws_context();
+
 	info.port = port;
 	info.address = hostname;
 	info.host = hostname;
@@ -291,6 +306,8 @@ int loci_connect_to_game_uuid(proxy_conn_t *pc,char *uuid) {
 	tmpgc = pc->game;
 	pc->game = oldpc->game;
 	oldpc->game = tmpgc;
+
+	pc->game->reconnections++;
 
 	pc->game->pc = pc;
 	if(oldpc->game) {

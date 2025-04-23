@@ -131,6 +131,8 @@ static const size_t _buffer_sizes_count = sizeof(_buffer_sizes) /
 /* RFC1143 option negotiation state table allocation quantum */
 #define Q_BUFFER_GROWTH_QUANTUM 4
 
+static INLINE void _set_rfc1143(telnet_t *telnet, unsigned char telopt, char us, char him);
+
 /* error generation function */
 static telnet_error_t _error(telnet_t *telnet, unsigned line,
 		const char* func, telnet_error_t err, int fatal, const char *fmt,
@@ -276,7 +278,8 @@ static INLINE int _check_telopt(telnet_t *telnet, unsigned char telopt,
 		}
 	}
 
-	/* not found, so not supported */
+	/* JSJ not found so not supported, but keep track of in the q  */
+	_set_rfc1143(telnet, telopt, Q_NO, Q_NO);
 	return 0;
 }
 
@@ -396,8 +399,10 @@ static void _negotiate(telnet_t *telnet, unsigned char telopt) {
 				_set_rfc1143(telnet, telopt, Q_US(q), Q_YES);
 				_send_negotiate(telnet, TELNET_DO, telopt);
 				NEGOTIATE_EVENT(telnet, TELNET_EV_WILL, telopt);
-			} else
+			} else {
+				_set_rfc1143(telnet, telopt, Q_NO, Q_NO); /* JSJ */
 				_send_negotiate(telnet, TELNET_DONT, telopt);
+			}
 			break;
 		case Q_WANTNO:
 			_set_rfc1143(telnet, telopt, Q_US(q), Q_NO);
@@ -454,8 +459,10 @@ static void _negotiate(telnet_t *telnet, unsigned char telopt) {
 				_set_rfc1143(telnet, telopt, Q_YES, Q_HIM(q));
 				_send_negotiate(telnet, TELNET_WILL, telopt);
 				NEGOTIATE_EVENT(telnet, TELNET_EV_DO, telopt);
-			} else
+			} else {
+				_set_rfc1143(telnet, telopt, Q_NO, Q_HIM(q)); /*JSJ*/
 				_send_negotiate(telnet, TELNET_WONT, telopt);
+			}
 			break;
 		case Q_WANTNO:
 			_set_rfc1143(telnet, telopt, Q_NO, Q_HIM(q));
@@ -703,7 +710,7 @@ static int _mssp_telnet(telnet_t *telnet, char* buffer, size_t size) {
 	next_type = buffer[0];
 	for (i = 0, c = buffer + 1; c < buffer + size;) {
 		/* search for end marker */
-		while (c < buffer + size -1 && (unsigned)*c != TELNET_MSSP_VAR &&
+		while (c < buffer + size && (unsigned)*c != TELNET_MSSP_VAR &&
 				(unsigned)*c != TELNET_MSSP_VAL) {
 			*out++ = *c++;
 		}
@@ -1666,3 +1673,35 @@ void telnet_begin_zmp(telnet_t *telnet, const char *cmd) {
 void telnet_zmp_arg(telnet_t *telnet, const char* arg) {
 	telnet_send(telnet, arg, strlen(arg) + 1);
 }
+
+/* JSJ LociTerm Addition! */
+/* returns 1 if option was in q. If found, sets *us and *them to the Q state. */
+int telnet_check_option(telnet_t *telnet, unsigned char telopt, int *us, int *them) {
+
+	/* search for entry */
+	for (int i = 0; i != telnet->q_cnt; ++i) {
+		if (telnet->q[i].telopt == telopt) {
+			if(us) *us = (Q_US(telnet->q[i]));
+			if(them) *them = (Q_HIM(telnet->q[i]));
+			return(1);
+		}
+	}
+	return(0);
+}
+
+/* return an int arry, -1 terminated, of telopts in the q. Caller must free the
+ * int array! */
+int *telnet_option_list(telnet_t *telnet) {
+
+	int *optlist = (int*)malloc(sizeof(int)*257);
+	int *t = optlist;
+
+	for (int i = 0; i != telnet->q_cnt; ++i) {
+		*t++ = telnet->q[i].telopt;
+	}
+	*t++ = -1;
+
+	return(optlist);
+}
+
+

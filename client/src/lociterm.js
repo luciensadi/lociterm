@@ -27,6 +27,7 @@ import { AttachAddon } from '@xterm/addon-attach';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { ImageAddon, IImageAddonOptions } from '@xterm/addon-image';
 import { WebglAddon } from '@xterm/addon-webgl';
+import { SerializeAddon } from '@xterm/addon-serialize';
 
 import { MenuHandler } from './menuhandler.js';
 import { NerfBar } from './nerfbar.js';
@@ -38,6 +39,8 @@ import { WordStack } from './wordstack.js';
 import { GaEorHandler } from './gaeor.js';
 import { HotkeyHandler } from './hotkey.js';
 import { CpDecoder } from './cpdecoder.js';
+import * as ObjDeep from './objdeep.js';
+import { LociPreferences } from './lociprefs.js';
 
 // The command codes MUST MATCH the defines in server/client.h !
 const Command = {
@@ -51,8 +54,17 @@ const Command = {
 	GMCP_DATA: 7,
 	GAME_LIST: 8,
 	MORE_INFO: 9,
-	GAEOR: 10
-}
+	GAEOR: 10,
+	NETSTAT: 11,
+	CHARSET: 12
+};
+
+const EchoMode = {
+	OldLineMode: 0,
+	SGALineMode: 1,
+	HiddenLineMode: 2,
+	CharMode: 3
+};
 
 // IIP support from xterm-addon-image
 // customize as needed (showing addon defaults)
@@ -97,7 +109,7 @@ class LociTerm {
 
 		// set variables.
 		this.mydiv = mydiv;
-		
+
 		this.lociThemes = lociThemes;
 		this.terminal = new Terminal({
 			// Unicode11Addon is a proposed api?? 
@@ -114,14 +126,14 @@ class LociTerm {
 		this.login = { requested: 0, name: "", password: "", remember: 1 };
 		this.socket = undefined;
 		this.reconnect_key = "";
-		this.themeLoaded = 0;
 		this.url = "";
 		this.nerfbar = new NerfBar(this,"nerfbar");
-		this.echo_mode = 0;
+		this.echo_mode = EchoMode.OldLineMode;
 		this.gmcp = new GMCP(this);
 		this.crtfilter = new CRTFilter("crtfilter");
+		this.encodings = ["utf-8", "cp437", "big5", "gbk", "ascii"];
+		this.encoding = "utf-8";
 		this.cpdecoder = new CpDecoder();
-
 		// code. 
 		this.terminal.loadAddon(this.unicode11Addon);
 		this.terminal.unicode.activeVersion = '11';
@@ -139,6 +151,10 @@ class LociTerm {
 		this.imageAddon = new ImageAddon();
 		this.terminal.loadAddon(this.imageAddon);
 
+		this.serializeaddon = new SerializeAddon();
+		this.terminal.loadAddon(this.serializeaddon);
+		this.serializeInit(mydiv.id);
+
 		this.terminal.onKey((e) => this.onKey(e) );
 		this.terminal.onData((e) => this.onTerminalData(e) );
 		this.terminal.onBinary((e) => this.onBinaryData(e) );
@@ -152,15 +168,15 @@ class LociTerm {
 			navigator.vibrate([50,100,150]);
 		});
 
-		try { 
-			try{
-				this.reconnect_key = JSON.parse(sessionStorage.getItem("reconnect_key"));
-			} catch {
-				this.reconnect_key = JSON.parse(localStorage.getItem("reconnect_key"));
-			}
-		} catch {
-			this.reconnect_key = {};
+		let rk;
+		if( (rk = sessionStorage.getItem("reconnect_key")) !== null ) {
+			this.reconnect_key = JSON.parse(rk);
+		} else if( (rk = localStorage.getItem("reconnect_key")) !== null ) {
+			this.reconnect_key = JSON.parse(rk);
+		} else {
+			this.reconnect_key = "";
 		}
+
 		this.autoreconnect = true;
 		this.reconnect_delay = 0;
 		this.serverhello = "";
@@ -181,9 +197,13 @@ class LociTerm {
 
 		// create hotkey menu after menuhandler is installed
 		this.hotkey.createEditorDiv();
+		this.pref = new LociPreferences(this);
+		this.terminal.attachCustomKeyEventHandler( ev => this.customKeyEvent(ev));
 
 		this.connectgame = new ConnectGame(this,this.menuhandler);
-		this.loadDefaultTheme();
+
+		this.serializeRestore(mydiv.id);
+
 		this.terminal.open(mydiv);
 		this.fitAddon.fit();
 		this.doWindowResize();
@@ -288,6 +308,11 @@ class LociTerm {
 		this.sendMsg(Command.MORE_INFO,JSON.stringify(msg));
 	}
 
+	requestNetStat(request) {
+		request = new Object();	 // ignore the request for now.
+		this.sendMsg(Command.NETSTAT,JSON.stringify(request));
+	}
+
 	focus(data) {
 		this.menuhandler.done();
 		/* if the nerfbar is active, focus it instead of the terminal. */
@@ -356,9 +381,10 @@ class LociTerm {
 		}
 		// Kinda hokey, but if the xtermjs temrinal gets a keystroke while the
 		// client is in line mode, try and activate the nerfbar instead.
-		// if(this.echo_mode != 3) {  FIXME
-		if(this.nerfbar.nerfstate == "active") {
-			this.focus();
+		if(this.echo_mode === EchoMode.SGALineMode || this.echo_mode === EchoMode.OldLineMode) {
+			if(this.nerfbar.nerfstate == "active") {
+				this.focus();
+			}
 		}
 	}
 
@@ -379,7 +405,7 @@ class LociTerm {
 		}
 
 		// char at a time mode is 3
-		if(this.echo_mode == 3) {
+		if(this.echo_mode == EchoMode.CharMode) {
 			// Send that data on up the websocket pipe.
 			this.sendMsg(Command.TERM_DATA,data);
 			return;
@@ -407,11 +433,15 @@ class LociTerm {
 
 	paste(data) {
 		this.sendMsg(Command.TERM_DATA,data);
-		if(this.echo_mode !=3 ) {
-			if(data.endsWith("\r")) {
-				this.terminal.writeln(data);
-			} else {
-				this.terminal.write(data);
+		if(this.echo_mode != EchoMode.CharMode ) {
+			if( (this.pref.get("nerf.localecho")===true) &&
+				(this.echo_mode != EchoMode.HiddenLineMode)
+			) {
+				if(data.endsWith("\r")) {
+					this.terminal.writeln(data);
+				} else {
+					this.terminal.write(data);
+				}
 			}
 		}
 	}
@@ -435,10 +465,10 @@ class LociTerm {
 			}
 		}
 
-		if(this.themeLoaded == false) {
+		if(this.themeLoaded === false) {
 			console.log("Delaying connection for themes to load...");
 			this.terminal.write(`\r`);
-			setTimeout(() => this.connect(url) , 100.0); 
+			setTimeout(() => this.connect(url) , 250.0); 
 			return;
 		}
 
@@ -542,14 +572,18 @@ class LociTerm {
 				// with the next message.
 
 				try {
-					// fatal:true here because we want the thing to fail if there's a
-					// partial sequence.
-					str = new TextDecoder('utf8', {fatal:true}).decode(output);
+					if(this.encoding === "cp437") {
+						str = this.cpdecoder.decode(output);
+					} else {
+						// fatal:true here because we want the thing to fail if there's a
+						// partial sequence.
+						str = new TextDecoder(this.encoding, {fatal:true}).decode(output);
+					}
 				} catch (e) {
 					let v = new DataView(output);
 					let i=v.byteLength -1;
 					/* skip backwards from the last byte, over any sequence bytes */
-					while( (v.getUint8(i) & 0xc0) == 0x80 ) {
+					while((i>0) && (v.getUint8(i) & 0xc0) == 0x80 ) {
 						i--;
 					}
 					// the retry chunk has had the partial utf sequence removed.
@@ -570,7 +604,7 @@ class LociTerm {
 					// slowly.  If that happens... fix something else.
 
 					try {
-						str = new TextDecoder('utf8', {fatal:true}).decode(retry);
+						str = new TextDecoder(this.encoding, {fatal:true}).decode(retry);
 					} catch (e) {
 						str = this.cpdecoder.decode(retry);
 					}
@@ -589,6 +623,7 @@ class LociTerm {
 				break;
 
 			case Command.CONNECT: {
+				this.gmcp.moduleCount=[];
 				let msg = new TextDecoder('utf8').decode(rawbuffer).slice(1);
 				console.log(`Recieved connection update '${msg}'`);
 				let robj = JSON.parse(msg);
@@ -654,17 +689,16 @@ class LociTerm {
 				let msg = new TextDecoder('utf8').decode(rawbuffer).slice(1);
 				try { obj = JSON.parse(msg); } catch { obj = 0; }
 				this.echo_mode = obj;
-				if (this.echo_mode == 3) {
+				if (this.echo_mode == EchoMode.CharMode) {
 					console.log(`Game connection is char-at-a-time.`);
-					/* honor the user's preference. */
-					let nerfbar = localStorage.getItem("nerfbar");
 					this.nerfbar.setHiddenMode(false);
-					if(nerfbar == "true") {
+					/* honor the user's preference. */
+					if(this.pref.get("nerf.enabled") === true) {
 						this.nerfbar.open();
 					} else {
 						this.nerfbar.close();
 					}
-				} else if (this.echo_mode == 2) {
+				} else if (this.echo_mode == EchoMode.HiddenLineMode) {
 					this.nerfbar.setHiddenMode(true);
 				} else {
 					console.log(`Game connection is obsolete line mode.`);
@@ -697,7 +731,23 @@ class LociTerm {
 				this.connectgame.update_game_about(obj);
 				break;
 			}
+			case Command.NETSTAT: {
+				let obj;
+				let msg = new TextDecoder('utf8').decode(rawbuffer).slice(1);
+				try { obj = JSON.parse(msg); } catch { obj = {}; }
+				this.menuhandler.netstat.update(obj);
+				break;
+			}
+			case Command.CHARSET: {
+				let obj;
+				let msg = new TextDecoder('utf8').decode(rawbuffer).slice(1);
+				this.cmdCharset(msg);
+				break;
+			}
 			case Command.HELLO: {
+
+				this.gmcp.moduleCount=[];
+
 				let hello = new TextDecoder('utf8').decode(rawbuffer).slice(1);
 				console.log(`Hello from server ${hello}`);
 
@@ -751,233 +801,6 @@ class LociTerm {
 		console.log(`Socket Error, ready state ${this.socket.readyState}, Reconnect in ${this.reconnect_delay}`);
 	}
 
-	loadDefaultTheme() {
-		let defaultTheme = this.lociThemes[0];
-		defaultTheme.locithemeno = 0;
-		let defaultThemeName = localStorage.getItem("locithemename");
-		for (let i=0;i<this.lociThemes.length;i++) {
-			if(this.lociThemes[i].name == defaultThemeName) {
-				console.log("Found stored theme name " + defaultThemeName);
-				defaultTheme = this.lociThemes[i];
-				defaultTheme.locithemeno = i;
-				break;
-			}
-		}
-
-		// these should probably be in an array to be looped over...
-		let fingerSize = localStorage.getItem("fingerSize");
-		if (fingerSize != undefined) {
-			defaultTheme.fingerSize = fingerSize;
-		}
-		let fontSize = localStorage.getItem("fontSize");
-		if (fontSize != undefined) {
-			defaultTheme.fontSize = fontSize;
-			defaultTheme.xtermoptions.fontSize = parseFloat(fontSize);
-		}
-		let menuFade = localStorage.getItem("menuFade");
-		if (menuFade != undefined) {
-			defaultTheme.menuFade = menuFade;
-		}
-		let nerfbar = localStorage.getItem("nerfbar");
-		if (nerfbar != undefined) {
-			defaultTheme.nerfbar = nerfbar;
-		} else {
-			defaultTheme.nerfbar = "false";
-		}
-
-		let readermode = localStorage.getItem("screenReaderMode");
-		if(readermode == null) {
-			readermode = "true";  // default to true if not set.
-		}
-		defaultTheme.screenReaderMode = readermode;
-		defaultTheme.xtermoptions.screenReaderMode = readermode;
-
-		let bgridAnchor = localStorage.getItem("bgridAnchor");
-		if (bgridAnchor != undefined) {
-			defaultTheme.bgridAnchor = bgridAnchor;
-		} else {
-			defaultTheme.bgridAnchor = "tr";
-		}
-
-		let menusideAnchor = localStorage.getItem("menusideAnchor");
-		if (menusideAnchor != undefined) {
-			defaultTheme.menusideAnchor = menusideAnchor;
-		} else {
-			defaultTheme.menusideAnchor = "br";
-		}
-
-		this.crtfilter.load();
-		defaultTheme.crtoptions = this.crtfilter.opts;
-
-		this.applyTheme(defaultTheme);
-
-	}
-
-	applyThemeNo(no=-1) {
-		
-		if( (no < 0) || (no >= this.lociThemes.length) ) {
-			return;
-		}
-		this.applyTheme(this.lociThemes[no]);
-	}
-
-	async applyTheme(theme) {
-
-		this.themeLoaded = 0;
-		// Apply the lociterm specific theme items.  This should probably be
-		// some kind of loop.
-
-		if(theme.fingerSize != undefined) {
-			document.documentElement.style.setProperty('--finger-size', theme.fingerSize);
-			localStorage.setItem("fingerSize",theme.fingerSize);
-		}
-		if(theme.fontSize != undefined) {
-			document.documentElement.style.setProperty('--font-size', theme.fontSize);
-			localStorage.setItem("fontSize",theme.fontSize);
-		}
-		if(theme.menuFade != undefined) {
-			document.documentElement.style.setProperty('--menufade-hidden', theme.menuFade);
-			localStorage.setItem("menuFade",theme.menuFade);
-		}
-		if(theme.nerfbar != undefined) {
-			localStorage.setItem("nerfbar",theme.nerfbar);
-			let select = document.getElementById("nerfbar-select");
-			if(select != undefined) {
-				select.checked = (theme.nerfbar == "true");
-			}
-			if(this.echo_mode == 3) {
-				if(theme.nerfbar == "true") {
-					this.nerfbar.open();
-				} else {
-					this.nerfbar.close();
-				}
-			} else {
-				/* open the nerfbar. */
-				this.nerfbar.open();
-				this.nerfbar.nofade();
-			}
-		}
-		if( (theme.xtermoptions != undefined) && (theme.xtermoptions.screenReaderMode != undefined)) {
-			localStorage.setItem("screenReaderMode",theme.xtermoptions.screenReaderMode);
-			let select = document.getElementById("reader-select");
-			if(select != undefined) {
-				select.checked = (theme.xtermoptions.screenReaderMode)?true:false;
-			} else {
-				select.checked = true;
-			}
-		}
-
-		if(theme.bgridAnchor != undefined) {
-			localStorage.setItem("bgridAnchor",theme.bgridAnchor);
-			if( theme.bgridAnchor[0] == 't' ) {
-				document.documentElement.style.setProperty('--bgridAnchor-top', "0");
-				document.documentElement.style.setProperty('--bgridAnchor-bottom', 'unset');
-			} else {
-				document.documentElement.style.setProperty('--bgridAnchor-top', 'unset');
-				document.documentElement.style.setProperty('--bgridAnchor-bottom', "2em");
-			}
-			if( theme.bgridAnchor[1] == 'l' ) {
-				document.documentElement.style.setProperty('--bgridAnchor-left', "0");
-				document.documentElement.style.setProperty('--bgridAnchor-right', 'uset');
-			} else {
-				document.documentElement.style.setProperty('--bgridAnchor-left', 'unset');
-				document.documentElement.style.setProperty('--bgridAnchor-right', "0");
-			}
-			// Update the bgridAnchor selector
-			let select = document.getElementById("bgridAnchor-select");
-			if(select != undefined) {
-				select.value = theme.bgridAnchor;
-			}
-		}
-
-		if(theme.menusideAnchor != undefined) {
-			localStorage.setItem("menusideAnchor",theme.menusideAnchor);
-			if( theme.menusideAnchor[0] == 't' ) {
-				document.documentElement.style.setProperty('--menuside-open-top', 0);
-				document.documentElement.style.setProperty('--menuside-open-bottom', 'unset');
-				document.documentElement.style.setProperty('--menuside-close-top', "-100%");
-				document.documentElement.style.setProperty('--menuside-close-bottom', 'unset');
-			} else {
-				document.documentElement.style.setProperty('--menuside-open-top', 'unset');
-				document.documentElement.style.setProperty('--menuside-open-bottom', 'var(--nerfbar-offsetHeight)');
-				document.documentElement.style.setProperty('--menuside-close-top', 'unset');
-				document.documentElement.style.setProperty('--menuside-close-bottom', "-100%");
-			}
-			if( theme.menusideAnchor[1] == 'l' ) {
-				document.documentElement.style.setProperty('--menuside-open-left', 0);
-				document.documentElement.style.setProperty('--menuside-open-right', 'unset');
-				document.documentElement.style.setProperty('--menuside-close-left', "-100%");
-				document.documentElement.style.setProperty('--menuside-close-right', 'unset');
-			} else {
-				document.documentElement.style.setProperty('--menuside-open-left', 'unset');
-				document.documentElement.style.setProperty('--menuside-open-right', 0);
-				document.documentElement.style.setProperty('--menuside-close-left', 'unset');
-				document.documentElement.style.setProperty('--menuside-close-right', "-100%");
-			}
-			// Update the menusideAnchor selector
-			let select = document.getElementById("menusideAnchor-select");
-			if(select != undefined) {
-				select.value = theme.menusideAnchor;
-			}
-		}
-
-		// Update the theme selector
-		if(theme.locithemeno != undefined) {
-			let select = document.getElementById("theme-select");
-			if(select != undefined) {
-				select.value = theme.locithemeno;
-			}
-		}
-
-		/* Set the main backgound... */
-		if(theme.background != undefined) {
-			document.documentElement.style.setProperty('--background-color', theme.background);
-		} else {
-			/* ... or have the main theme background inherit the xterm background. */
-			if(theme.xtermoptions != undefined) {
-				if(theme.xtermoptions.theme != undefined) {
-					if(theme.xtermoptions.theme.background != undefined) {
-						document.documentElement.style.setProperty('--background-color', theme.xtermoptions.theme.background);
-					}
-				}
-			}
-		}
-
-		// Apply the xtermjs specific theme items.
-		if(theme.xtermoptions != undefined) {
-			// If there's an xterm fontFamily specified, check if that font is
-			// already loaded.  If it is not, ask for it to be loaded, and
-			// trigger an async function to recall applyTheme when it is ready.
-			if(theme.xtermoptions.fontFamily != undefined) {
-				let familylist = theme.xtermoptions.fontFamily.split(",");
-				for (let f=0; f<familylist.length; f++) {
-					let fontname = "16px " + familylist[f];
-					if( document.fonts.check(fontname) == false ) {
-						console.log(`Loading ${fontname}`);
-						document.fonts.load(fontname);
-					}
-				}
-				await document.fonts.ready;
-			}
-			this.terminal.options = Object.assign(theme.xtermoptions);
-			this.terminal.refresh(0,this.terminal.rows-1);
-			this.fitAddon.fit();
-			this.doWindowResize();
-		}
-		if(theme.name != undefined) {
-			localStorage.setItem("locithemename",theme.name);
-			this.themeName = theme.name;
-		}
-		
-		if(theme.crtoptions != undefined) {
-			this.crtfilter.update(this.crtfilter.defaultopts);
-			this.crtfilter.update(theme.crtoptions);
-			this.crtfilter.save();
-		}
-
-		this.themeLoaded = 1;
-	}
-
 	debug() {
 		debugger
 	}
@@ -1004,6 +827,58 @@ class LociTerm {
 			}
 		}
 	}
+
+	// Currently, the only custom key event this handles is for remapping bs and del.
+	customKeyEvent(ev) {
+
+		if(this.pref.get("lociterm.bsSendsDel")===true) {
+			return true;
+		}
+
+		const keymap = [
+			{ "key": "Backspace", "ctrlKey": false, "mapCode": 8 },
+			{ "key": "Backspace", "ctrlKey": true, "mapCode": 127 }
+		];
+		if (ev.type === 'keydown') {
+			for (let i in keymap) {
+				if (keymap[i].key == ev.key && keymap[i].ctrlKey == ev.ctrlKey) {
+					this.sendMsg(Command.TERM_DATA,String.fromCharCode(keymap[i].mapCode));
+					return false;
+				}
+			}
+		}
+	}
+
+	/* translate javascript charset to network charset */
+	sendCharset(charset) {
+		this.sendMsg(Command.CHARSET,charset.toUpperCase());
+	}
+
+	/* network charset to javascript charset */
+	cmdCharset(charset) {
+		this.encoding = charset.toLowerCase();
+		this.pref.set("lociterm.encoding", charset.toLowerCase());
+		console.log(`CHARSET is ${charset}`);
+	}
+
+	serializeInit(id) {
+		window.onbeforeunload = ( ()=> {
+			this.serializeSave(id);
+		});
+	}
+
+	serializeSave(id) {
+		let data = this.serializeaddon.serialize();
+		sessionStorage.setItem(`${id}_ser`,data);
+	}
+
+	serializeRestore(id) {
+		let data = sessionStorage.getItem(`${id}_ser`);
+		if(data !== null) {
+			this.terminal.write(data);
+		} 
+	}
+
 }
 
 export { LociTerm }

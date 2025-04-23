@@ -57,6 +57,7 @@ client_conn_t *new_client_conn() {
 	n->wsi_client = NULL;
 	n->client_q = g_queue_new();
 	n->client_state = PRXY_INIT;
+	n->connections = 0;
 
 	n->ios = iostat_new();
 
@@ -103,7 +104,6 @@ void free_client_conn(client_conn_t *f) {
 	return;
 
 }
-
 
 /* reads loci client protocol messages and acts on them. */
 int loci_client_parse(proxy_conn_t *pc, char *in, size_t len) {
@@ -156,6 +156,7 @@ int loci_client_parse(proxy_conn_t *pc, char *in, size_t len) {
 			memcpy(s,msg,msglen);
 			ret = loci_connect_verbose(pc,s);
 			free(s);
+			pc->client->connections++;
 			return(ret);
 		} break;
 		case DISCONNECT:
@@ -179,6 +180,16 @@ int loci_client_parse(proxy_conn_t *pc, char *in, size_t len) {
 			loci_client_more_info(pc,s);
 			free(s);
 			return(0);
+		case NETSTAT:
+			loci_client_send_netstat(pc);
+			return(0);
+		case CHARSET:
+			s=strndup(msg,msglen); /* make zero terminated */
+			/* inform the game of client side change*/
+			loci_proxy_set_charset(pc,s);
+			loci_game_send_charset(pc);
+			free(s);
+			return(0);
 		case OLD_LOCITERM:
 			locid_info(pc,"Ooops!  Old lociterm1x protocol detected?",*in);
 			char *ooops = "Please refresh the page!\r\n";
@@ -198,6 +209,8 @@ void loci_client_send_cmd(proxy_conn_t *pc, char cmd, char *in, size_t len) {
 
 	proxy_msg_t *msg;
 	uint8_t *data;
+
+	if(!pc || !(pc->client)) return;
 
 	/* notice we over-allocate by LWS_PRE + rx len */
 	msg = (proxy_msg_t *)malloc(sizeof(*msg) + LWS_PRE + sizeof(char) + len);

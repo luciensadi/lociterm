@@ -71,8 +71,9 @@ body  {
 	width: 100%;
 	/*height: 100%; */
 	flex-grow: 1;
-	display: flex;
+	/* display: var(--terminal-sb-display); */
 	justify-content: space-evenly;
+	margin: var(--terminal-margin);
 }
 
 :root {
@@ -83,7 +84,16 @@ body  {
 }
 
 .xterm .xterm-viewport {  /* this is the xterm.js div with the vert scrollbar */
-	scrollbar-width: none;
+	scrollbar-width: var(--terminal-sb-width);
+	display: var(--terminal-sb-display);
+	visibility: var(--terminal-sb-visibility);
+	transition: opacity 4s ease-in-out;
+	opacity: var(--menufade-hidden);
+}
+
+.xterm-viewport:hover {
+	opacity: 1.0;
+	transition: opacity 0.25s ease-in-out;
 }
 
 .locilayout { /* Includes the lociterm UI items */

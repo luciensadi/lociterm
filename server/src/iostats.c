@@ -45,6 +45,8 @@ void iostat_init(struct iostat_data *ios) {
 	iostat_counter_init(&(ios->lifetime));
 	iostat_counter_init(&(ios->checkpoint));
 	iostat_counter_init(&(ios->rate));
+	ios->rate.ts.tv_sec =0;
+	ios->rate.ts.tv_usec =0;
 }
 
 void iostat_incr(struct iostat_data *ios,int in, int out) {

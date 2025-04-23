@@ -1,8 +1,7 @@
-/* telnet.h - LociTerm libtelnet handlers */
-/* Created: Fri Apr 29 03:01:13 PM EDT 2022 malakai */
-/* $Id: telnet.h,v 1.7 2024/12/06 04:59:51 malakai Exp $ */
+/* charset.h - LociTerm libtelnet handlers */
+/* Created: Fri Mar 21 10:28:53 AM EDT 2025 malakai */
 
-/* Copyright © 2022 Jeff Jahr <malakai@jeffrika.com>
+/* Copyright © 2025 Jeff Jahr <malakai@jeffrika.com>
  *
  * This file is part of LociTerm - Last Outpost Client Implementation Terminal
  *
@@ -21,36 +20,22 @@
  */
 
 
-#ifndef LO_TELNET_H
-#define LO_TELNET_H
+#ifndef LO_CHARSET_H
+#define LO_CHARSET_H
 
 /* global #defines */
 /* these are some extra telnet telopt definitions that don't already appear in
  * libtelnet. */
 #define TELNET_TELOPT_CHARSET 42
-#define TELNET_TELOPT_MSDP 69
-#define TELNET_TELOPT_MSP 90
-#define TELNET_TELOPT_MXP 91
-#define TELNET_TELOPT_MUSHCLIENT 102
-#define TELNET_TELOPT_ATCP 200
-#define TELNET_TELOPT_GMCP 201
 
 /* structs and typedefs */
 
 /* exported global variable declarations */
 
-
 /* exported function declarations */
+const char *loci_charset_get_default();
+void loci_charset_apply(proxy_conn_t *pc,const char *charset, int inform_server);
+void loci_charset_send_request(proxy_conn_t *pc);
+void loci_charset_handler(telnet_t *telnet, telnet_event_t *event, void *user_data);
 
-telnet_t *loci_telnet_init(game_conn_t *gc);
-void loci_telnet_free(game_conn_t *gc);
-void loci_telnet_send_naws(telnet_t *telnet, int width, int height);
-void loci_telnet_send_gmcp(telnet_t *telnet, const char *buffer, size_t size);
-void loci_environment_init(proxy_conn_t *pc);
-void loci_environment_free(proxy_conn_t *pc);
-void loci_renegotiate_env(proxy_conn_t *pc);
-void loci_environment_update(proxy_conn_t *pc, int type, char *var, char *value);
-void loci_renegotiate_gmcp(proxy_conn_t *pc);
-const char *telopt_name(uint8_t option);
-
-#endif /* LO_TELNET_H */
+#endif /* LO_CHARSET_H */

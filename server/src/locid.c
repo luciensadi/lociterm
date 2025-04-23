@@ -2,7 +2,7 @@
 /* Created: Wed Apr 27 11:11:03 AM EDT 2022 malakai */
 /* $Id: locid.c,v 1.26 2024/11/30 16:46:52 malakai Exp $ */
 
-/* Copyright © 2022 Jeff Jahr <malakai@jeffrika.com>
+/* Copyright © 2022-2025 Jeff Jahr <malakai@jeffrika.com>
  *
  * This file is part of LociTerm - Last Outpost Client Implementation Terminal
  *
@@ -33,6 +33,7 @@
 #include <arpa/inet.h>
 #include <libwebsockets.h>
 #include <sys/wait.h>
+#include <uv.h>
 
 #include "libtelnet.h"
 
@@ -41,6 +42,7 @@
 #include "client.h"
 #include "game.h"
 #include "gamedb.h"
+#include "scan.h"
 
 #include "locid.h"
 
@@ -50,6 +52,7 @@
 
 static int interrupted;
 struct locid_conf *config;
+static	struct lws_context *locid_default_lws_context;
 
 static const lws_retry_bo_t retry = {
 	.secs_since_valid_ping = 3,
@@ -66,14 +69,59 @@ static struct lws_protocols protocols[] = {
 struct lws_protocol_vhost_options *extra_mimetypes(void);
 void free_extra_mimetypes(struct lws_protocol_vhost_options *f);
 
-void sigint_handler(int sig)
-{
+void sigint_handler(int sig) {
+	uv_stop(uv_default_loop());
 	interrupted = 1;
 }
 
 void sigchld_handler(int sig) {
 	while (waitpid((pid_t) (-1), 0, WNOHANG) > 0) {}
 }
+
+/* a libuv signal handler callback */
+void signal_callback(uv_signal_t *watcher, int sig) {
+	switch(sig) {
+		case SIGINT:
+		case SIGHUP:
+			sigint_handler(sig);
+			break;
+		case SIGCHLD:
+			sigchld_handler(sig);
+			break;
+		case SIGUSR1:
+		case SIGUSR2:
+			loci_proxy_log_status();
+			break;
+		default:
+			break;
+	}
+}
+
+void signal_callback_lws(void *handle, int sig) {
+	signal_callback(handle,sig);
+}
+
+void signals_init(uv_loop_t *uvloop) {
+	static uv_signal_t sigint_h;
+	uv_signal_init(uvloop, &sigint_h);
+	uv_signal_start(&sigint_h, signal_callback, SIGINT);
+
+	static uv_signal_t sighup_h;
+	uv_signal_init(uvloop, &sighup_h);
+	uv_signal_start(&sighup_h, signal_callback, SIGHUP);
+
+	static uv_signal_t sigchld_h;
+	uv_signal_init(uvloop, &sigchld_h);
+	uv_signal_start(&sigchld_h, signal_callback, SIGCHLD);
+
+	static uv_signal_t sigusr1_h;
+	uv_signal_init(uvloop, &sigusr1_h);
+	uv_signal_start(&sigusr1_h, signal_callback, SIGUSR1);
+
+	return;
+}
+
+	
 
 void launch_web_browser(struct locid_conf *config) {
 
@@ -93,7 +141,7 @@ void launch_web_browser(struct locid_conf *config) {
 
 	locid_log("Running %s %s .",config->client_launcher,url);
 
-	signal(SIGCHLD, sigchld_handler);
+	/* signal(SIGCHLD, sigchld_handler); */
 
 	if( (child=fork()) == 0) {
 		/* I am the child. */
@@ -192,6 +240,16 @@ struct locid_conf *new_config(char *filename) {
 
 	c->default_doc = get_conf_string(gkf, "locid", "default_doc", "index.html");
 
+	c->locid_debugflags = g_key_file_get_string_list (
+		gkf, "locid", "debug", NULL, NULL
+	);
+	if(c->locid_debugflags == NULL) {
+		g_autoptr(GStrvBuilder) builder = g_strv_builder_new ();
+		g_strv_builder_add (builder, "log");
+		c->locid_debugflags = g_strv_builder_end (builder);
+	}
+	set_debug_from_strvec(c->locid_debugflags);
+
 	c->client_security = get_conf_string(gkf,"client","security","none");
 	c->client_launcher = get_conf_string(gkf,"client","launcher","xdg-open");
 
@@ -267,6 +325,30 @@ struct locid_conf *new_config(char *filename) {
 	}
 	free(tmpstr);
 
+	c->mssp_crawl_delay = atoi(get_conf_string(gkf,"mssp","crawl_delay","0"));
+	c->mssp_recently_updated = atoi(get_conf_string(gkf,"mssp","recently_updated","168"));
+
+	c->mssp_notable_fields = g_key_file_get_string_list (
+		gkf, "mssp", "notable_fields", NULL, NULL
+	);
+	if(c->mssp_notable_fields == NULL) {
+		g_autoptr(GStrvBuilder) builder = g_strv_builder_new ();
+		g_strv_builder_add (builder, "CODEBASE");
+		g_strv_builder_add (builder, "DISCORD");
+		g_strv_builder_add (builder, "WEBSITE");
+		g_strv_builder_add (builder, "ICON");
+		g_strv_builder_add (builder, "CONTACT");
+		g_strv_builder_add (builder, "STATUS");
+		c->mssp_notable_fields = g_strv_builder_end (builder);
+	}
+
+	c->scan_enabled = get_conf_boolean(gkf,"scan","enabled",0);
+	c->scan_dry_run = get_conf_boolean(gkf,"scan","dry_run",0);
+	c->scan_check_interval = get_conf_int(gkf,"scan","check_interval",15);
+	c->scan_expired = get_conf_int(gkf,"scan","expired",23);
+	c->scan_batch_size = get_conf_int(gkf,"scan","batch_size",5);
+	c->scan_batch_delay = get_conf_int(gkf,"scan","batch_delay",10);
+
 	g_key_file_free(gkf);
 	return(c);
 }
@@ -280,6 +362,9 @@ void free_config(struct locid_conf *c) {
 	if(c->mountpoint) free(c->mountpoint);
 	if(c->origin) free(c->origin);
 	if(c->default_doc) free(c->default_doc);
+	if(c->locid_debugflags) {
+		g_strfreev(c->locid_debugflags);
+	}
 	if(c->client_security) free(c->client_security);
 	if(c->client_service) free(c->client_service);
 	if(c->client_launcher) free(c->client_launcher);
@@ -295,6 +380,9 @@ void free_config(struct locid_conf *c) {
 	if(c->db_location) free(c->db_location);
 	if(c->db_banned_ports) {
 		g_list_free_full(c->db_banned_ports,free);
+	}
+	if(c->mssp_notable_fields) {
+		g_strfreev(c->mssp_notable_fields);
 	}
 
 	free(c);
@@ -396,21 +484,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	/* begin websocket init */
-	if(debug) {
-		// enable lws library debug messages.
-		//int lwslogs = LLL_USER | LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_CLIENT | LLL_HEADER | LLL_INFO | LLL_DEBUG;
-		// int lwslogs = LLL_USER | LLL_ERR | LLL_WARN | LLL_NOTICE;
-		int lwslogs = LLL_ERR | LLL_WARN;
-		lws_set_log_level(lwslogs, (lws_log_emit_t)locid_log_lws);
-
-		// enable locid debug messages.  See debug.h for value of DEBUG_ON
-		global_debug_facility = DEBUG_ON;
-	} else {
-		int lwslogs = LLL_ERR | LLL_WARN;
-		lws_set_log_level(lwslogs, (lws_log_emit_t)locid_log_lws);
-	}
-
+	/* begin init */
 	/* there was no config provided on the command line?  */
 	if(configfilename == NULL) {
 		/* check if a ~/.locid.conf exists.*/
@@ -432,6 +506,20 @@ int main(int argc, char **argv) {
 	if (! (config = new_config(configfilename)) ) {
 		exit(EXIT_FAILURE);
 	}
+
+	int lwslogs = LLL_ERR | LLL_WARN;
+	if(debug) {
+		// enable lws library debug messages if DEBUG_LWS is enabled.
+		if(global_debug_facility & DEBUG_LWS) {
+			lwslogs |= LLL_USER;
+			lwslogs |= LLL_NOTICE | LLL_CLIENT | LLL_HEADER;
+			lwslogs |= LLL_INFO | LLL_DEBUG;
+		}
+	} else {
+		global_debug_facility = DEBUG_OFF;
+	}
+	lws_set_log_level(lwslogs, (lws_log_emit_t)locid_log_lws);
+
 	locid_log_init(config->log_file);
 
 	/* init the database. */
@@ -476,10 +564,12 @@ int main(int argc, char **argv) {
 		}
 			
 		locid_log("Banned port list contains %d ports.",g_list_length(config->db_banned_ports));
+
+		game_db_update_telopt_names();
+		
 	}
 
 	config->client_localmode = localmode;
-
 
 	/* init the mountpoint struct for lws's built in http server. */
 	mount = (struct lws_http_mount *)malloc(sizeof(struct lws_http_mount));
@@ -490,7 +580,7 @@ int main(int argc, char **argv) {
 	mount->origin_protocol = LWSMPRO_FILE;
 	mount->def = config->default_doc;
 	mount->extra_mimetypes = extra_mimetypes();
-	mount->cache_max_age = 604800;
+	mount->cache_max_age = 86400;
 	mount->cache_reusable = 1;
 	mount->cache_revalidate = 1;
 	mount->cache_intermediaries = 1;
@@ -536,40 +626,44 @@ int main(int argc, char **argv) {
 	/* Enable permessage deflate extension */
 	info.extensions = extensions;
 #endif
-	
 
+	/* will be using a libuv foreign loop */
+	uv_loop_t *uvloop = uv_default_loop();
+	info.options |= LWS_SERVER_OPTION_LIBUV;
+	info.foreign_loops = (void **)&uvloop;
 
-	context = lws_create_context(&info);
+	/* associate the signal handler. */
+	info.signal_cb = signal_callback_lws;
+
+	locid_default_lws_context = context = lws_create_context(&info);
 	if (!context) {
 		locid_log("LWS init failed!\n");
 		return 1;
 	}
 
+	/* add some signal handlers */
+	signals_init(uvloop);
+
+	/* add in the timer for the db scanner. */
+	scanner_init(uvloop,config);
+
+	/* end websocket init */
 	locid_log("LociTerm server listening on port %d.", 
 		config->listening_port
 	);
 
-	/* turn on the signal handler. */
-	sigemptyset(&mask);
-	sigaddset(&mask,SIGPIPE);
-	sigprocmask(SIG_SETMASK,&mask,NULL);
-	signal(SIGINT, sigint_handler);
-
 	if(config->client_localmode == 1) {
 		launch_web_browser(config);
 	}
-
-	/* end websocket init */
-
-	/* Keep on giving good service... Its all event driven from here. */
-	int retcode = 0;
-	while (retcode >= 0 && !interrupted) {
-		//locid_debug(DEBUG_LWS,NULL,"Boop.");
-		retcode = lws_service(context, 0);
-	}
+	
+	/* Keep on giving good service... Its all event driven through the libuv
+	 * loop from here. uv_run() is supposed to run forever, or until it is
+	 * shutdown with a signal. */
+	uv_run(uvloop,UV_RUN_DEFAULT);
 
 	/* exit and cleanup */
 	lws_context_destroy(context);
+	uv_loop_close(uvloop);
 	free_proxyconns();
 	if(mount) free(mount);
 	free_config(config);
@@ -606,4 +700,8 @@ void free_extra_mimetypes(struct lws_protocol_vhost_options *f) {
 		free(f);
 		f = n;
 	}
+}
+
+struct lws_context *locid_get_default_lws_context(void) {
+	return(locid_default_lws_context);
 }
