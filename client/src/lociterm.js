@@ -41,6 +41,7 @@ import { HotkeyHandler } from './hotkey.js';
 import { CpDecoder } from './cpdecoder.js';
 import * as ObjDeep from './objdeep.js';
 import { LociPreferences } from './lociprefs.js';
+import { OSC8Handler } from './osc8handler.js';
 
 // The command codes MUST MATCH the defines in server/client.h !
 const Command = {
@@ -122,7 +123,6 @@ class LociTerm {
 		this.sendq = [];
 		this.resizeTimeout = undefined;
 		this.lastResize = "";
-		this.webLinksAddon = new WebLinksAddon();
 		this.login = { requested: 0, name: "", password: "", remember: 1 };
 		this.socket = undefined;
 		this.reconnect_key = "";
@@ -138,7 +138,6 @@ class LociTerm {
 		this.terminal.loadAddon(this.unicode11Addon);
 		this.terminal.unicode.activeVersion = '11';
 		this.terminal.loadAddon(this.fitAddon);
-		this.terminal.loadAddon(this.webLinksAddon);
 		this.terminal.options.convertEol = true;
 
 		this.webgladdon = new WebglAddon();
@@ -154,6 +153,13 @@ class LociTerm {
 		this.serializeaddon = new SerializeAddon();
 		this.terminal.loadAddon(this.serializeaddon);
 		this.serializeInit(mydiv.id);
+
+		// Implicit web link stuff.
+		this.webLinksAddon = new WebLinksAddon();
+		this.terminal.loadAddon(this.webLinksAddon);
+
+		// OSC8 link handler stuff.
+		this.terminal.options.linkHandler = new OSC8Handler(this);
 
 		this.terminal.onKey((e) => this.onKey(e) );
 		this.terminal.onData((e) => this.onTerminalData(e) );

@@ -1,0 +1,38 @@
+See https://github.com/Alhadis/OSC8-Adoption?tab=readme-ov-file for info on
+OCS8 hyperlinks.
+
+Lociterm has a special handler for OSC8 links that enables sending a command
+back through the terminal.  The special URI schemes that lociterm parses are:
+
+send:<URI encoded data>
+prompt:<URI encoded data>
+
+The send scheme injects the URI decoded data back into the terminal, as if the
+player had issued it as a command and hit Enter.
+
+The prompt scheme the same as send, but does not hit enter.
+
+*** THIS WOULD BE AN EXTREMELY SKETCHY FEATURE TO ADD TO A TERMINAL USED AS A
+SHELL THAT RUNS OTHER PROGRAMS ***
+
+The other programs could produce hyperlinks with their own limited privilege,
+that could later be inadvertently clicked upon when the user is back at a
+higher privilege prompt.  Not good.  
+
+The situation is not as bad in a MUD game, because there's really just the one
+game server running, and the UI is already full of clickable command injection
+buttons.  However, even in a MUD environment, you have to be careful not to let
+players output hyperlinks to other players directly, or badness might ensue.
+
+Lociterm tries to show the contents of the hyperlink on 'hover', but
+touchscreen phones don't have hover, so it can still be dangerous.
+
+Both schemes route through the nerfbar history.
+
+Here's some examples:
+
+Implicit: https://lociterm.com
+Explicit: ]8;;https://lociterm.com\lociterm]8;;\
+Mud: ]8;;send:buy%20bread\buy a loaf]8;;\
+Mud: ]8;;prompt:buy%20bread\bread for sale]8;;\
+Unknown: ]8;;unknown://junk\unknown junk]8;;\ won't click.

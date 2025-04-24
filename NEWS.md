@@ -1,5 +1,10 @@
 ## What's New
 
+### Version 2.4.0
+
+- bugfix to keep the line mode password from echoing
+- added OSC8 send: and prompt: hyperlink parser
+
 ### Version 2.3.1
 
 - Added terminal state restoration on refresh.

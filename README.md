@@ -98,6 +98,7 @@ the same system as the game, on your web server, or elsewhere 'in the cloud'.
 - About Game shows server MSSP data, including Icon, location, contact info and web links.
 - Local function key editor and function key menu.
 - CP437 fallback for Telnet BBS systems
+- OSC8 Hyperlinks
 
 
 ## How LociTerm Works
