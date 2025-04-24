@@ -317,11 +317,11 @@ struct locid_conf *new_config(char *filename) {
 	);
 	int bport;
 	char *d = tmpstr;
-	while(d && sscanf(d,"%d",&bport) ) {
-		int *lport = (int*)malloc(1*sizeof(int));
+	while(d && sscanf(d, "%d", &bport) == 1) {
+		int *lport = (int*)malloc(1 * sizeof(int));
 		*lport = bport;
-		c->db_banned_ports = g_list_append(c->db_banned_ports,lport);
-		if( (d=strchr(d,','))) d++;
+		c->db_banned_ports = g_list_append(c->db_banned_ports, lport);
+		if ((d = strchr(d, ','))) d++;
 	}
 	free(tmpstr);
 
