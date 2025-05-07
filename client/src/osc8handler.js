@@ -25,9 +25,30 @@ class OSC8Handler {
 		this.lociterm = lociterm;
 		this.linkpopup = undefined;
 
+		return(this);
+	};
+
+	// Returns a linkHandler object suitable for terminal options.
+	linkHandler() {
+
 		let linkHandler = {
-			activate: (e,text,range) => {this.sendLink(e,text,range); this.removeLinkPopup(e,text,range);},
-			hover: (e,text,range) => { this.showLinkPopup(e,text,range);},
+			activate: (e,text,range) => {
+				this.lociterm.wordstack.addLink(e,text,range); 
+				this.lociterm.wordstack.updateMenu(e,text,range); 
+				if(this.lociterm.pref.get("lociterm.linksOpenImmediately")===true) {
+					this.sendLink(e,text,range);
+					this.removeLinkPopup();
+				} else {
+					this.lociterm.wordstack.openMenu();
+					this.removeLinkPopup();
+				}
+					
+			},
+			hover: (e,text,range) => { 
+				if(this.lociterm.pref.get("lociterm.linksOpenImmediately")===true) {
+					this.showLinkPopup(e,text,range);
+				}
+			},
 			leave: (e,text,range) => { this.removeLinkPopup(e,text,range); },
 			allowNonHttpProtocols: true
 		}
@@ -42,7 +63,7 @@ class OSC8Handler {
 	// Custom OSC8 link handler 
 	sendLink(e,text,range) {
 
-		let scheme = text.split(":")[0];
+		let scheme = text.split(":")[0].toLowerCase();
 		let path = text.slice(text.indexOf(":")+1);
 
 		if(!this.supportedLinkScheme(scheme)) { 
@@ -66,6 +87,7 @@ class OSC8Handler {
 		}
 
 		// fragment snagged from xterm.js/src/browser/OscLinkProvider.ts
+		this.lociterm.menuhandler.done();
 		const answer = confirm(`Do you want to navigate to ${text}?`);
 		if(answer) {
 			const newWindow = window.open();
@@ -104,14 +126,16 @@ class OSC8Handler {
 		popup.classList.add('xterm-link-popup');
 		popup.style.position = 'absolute';
 
+		let poptext = document.createElement('span');
+		popup.appendChild(poptext);
 		if(scheme === "send") {
 			path = decodeURIComponent(path);
-			popup.innerText = path;
+			poptext.innerText = path;
 		} else if (scheme === "prompt") {
 			path = decodeURIComponent(path) + " ...";
-			popup.innerText = path;
+			poptext.innerText = path;
 		} else {
-			popup.innerText = text;
+			poptext.innerText = text;
 		}
 
 		const topElement = e.target.parentNode;
@@ -121,11 +145,10 @@ class OSC8Handler {
 			document.getElementsByClassName("xterm-screen")[0].appendChild(popup);
 		}
 
-		let Y = e.clientY - (popup.clientHeight / 2);
-		let X = e.clientX - (popup.clientWidth / 2);
-		popup.style.top = `${Y}px`
-		popup.style.left = `${X}px`
-		popup.style.opacity = `1.0`;
+		popup.style.position = "fixed";
+		popup.style.bottom = "var(--nerfbar-offsetHeight)";
+		popup.style.right = "0px";
+		popup.style.opacity = `0.5`;
 
 		this.linkpopup = popup;
 

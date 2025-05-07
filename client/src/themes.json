@@ -11,6 +11,8 @@
 			"drawBoldTextInBrightColors": 1,
 			"minimumContrastRatio": 1.4,
 			"fontFamily": "LOFont,courier",
+			"fontWeightBold": "bold",
+			"fontWeight": "normal",
 			"cursorBlink": true,
 			"cursorStyle": "block",
 			"cursorInactiveStyle": "outline",
@@ -171,7 +173,7 @@
 				"black": "#000000",
 				"red": "#AA0000",
 				"green": "#00AA00",
-				"yellow": "#AA5500",
+				"yellow": "#AAAA00",
 				"blue": "#0000AA",
 				"magenta": "#AA00AA",
 				"cyan": "#00AAAA",
@@ -179,11 +181,11 @@
 
 				"brightBlack": "#555555",
 				"brightRed": "#ff5555",
-				"brightGreen": "#ffaa55",
+				"brightGreen": "#55FF55",
 				"brightYellow": "#ffff55",
 				"brightBlue": "#5555ff",
 				"brightMagenta": "#ff55ff",
-				"brightCyan": "#5555ff",
+				"brightCyan": "#55ffff",
 				"brightWhite": "#ffffff"
 			}
 		}

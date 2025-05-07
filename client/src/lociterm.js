@@ -158,8 +158,6 @@ class LociTerm {
 		this.webLinksAddon = new WebLinksAddon();
 		this.terminal.loadAddon(this.webLinksAddon);
 
-		// OSC8 link handler stuff.
-		this.terminal.options.linkHandler = new OSC8Handler(this);
 
 		this.terminal.onKey((e) => this.onKey(e) );
 		this.terminal.onData((e) => this.onTerminalData(e) );
@@ -193,6 +191,10 @@ class LociTerm {
 		this.wordstack.menuid = "sys_wordstack";
 		this.hotkey = new HotkeyHandler(this);
 		this.menuhandler = new MenuHandler(this);
+
+		// OSC8 link handler stuff.
+		this.osc8handler = new OSC8Handler(this);
+		this.terminal.options.linkHandler = this.osc8handler.linkHandler();
 
 		this.gaeor = new GaEorHandler(this);
 		// ...for example... 
@@ -427,9 +429,9 @@ class LociTerm {
 		this.sendMsg(Command.TERM_DATA,data);
 	}
 
-	onSelectionChange(data) {
+	onSelectionChange(e) {
 		let selection = this.terminal.getSelection();
-		if (this.wordstack.addSelection(selection) === true) {
+		if (this.wordstack.addSelection(e,selection) === true) {
 			this.wordstack.openMenu();
 		} else {
 			this.wordstack.closeMenu();

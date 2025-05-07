@@ -1116,6 +1116,18 @@ class MenuHandler {
 		// the input is is children[0] of the generic checkbox.
 		win.appendChild(l);
 
+		// linksOpenImmediately
+		l = this.create_generic_checkbox(
+			`${menuname}_linksOpenImmediately`,
+			"Single click links",
+			this.lociterm.pref.get("lociterm.linksOpenImmediately"),
+			((e)=>{
+				this.lociterm.pref.set("lociterm.linksOpenImmediately",e.srcElement.checked);
+			})
+		);
+		// the input is is children[0] of the generic checkbox.
+		win.appendChild(l);
+
 		// fontWeightBold - It doesn't really make much visual difference, so I turned it off.
 		//l = this.create_generic_checkbox(
 		//	`${menuname}_fontWeightBold`,

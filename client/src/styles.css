@@ -125,5 +125,7 @@ div.xterm-link-popup {
 	z-index: 12;
 	transition: opacity 2s ease-in-out;
 	overflow-x: hidden;
-	max-width: 80%;
+	max-width: 33%;
+	text-wrap-mode: nowrap;
 }
+

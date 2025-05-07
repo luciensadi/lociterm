@@ -19,17 +19,77 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with LociTerm.  If not, see <https://www.gnu.org/licenses/>.
 
+class WordStackEntry {
+	constructor(type="prompt") {
+
+		this.type = type;
+		this.label = "";
+		this.data = "";
+		this.onclick = undefined;
+
+		return(this);
+	}
+
+	eq(b) {
+		if(b === undefined) {
+			return(false);
+		}
+		if( this.type != b.type ) {
+			return(false);
+		}
+		if( this.label != b.label ) {
+			return(false);
+		}
+		if( this.data != b.data ) {
+			return(false);
+		}
+		return(true);
+	}
+
+}
+
 class WordStack {
 
 	constructor(lociterm) {
 
 		this.lociterm = lociterm;
 		this.stack = [];
-		this.atmost = 5;
+		this.atmost = 6;
 		this.menuid = "";
+
 	}
 
-	addSelection(selection) {
+
+	push(wse) {
+
+		let lastselection = this.stack[this.stack.length -1];
+		if( !(wse.eq(lastselection))) {
+			this.stack.push(wse);
+			if(this.stack.length > this.atmost) {
+				this.stack = this.stack.slice(1);
+			}
+			this.updateMenu();
+		}
+	}
+
+	addLink(e,text,link) {
+		let wse = new WordStackEntry("uri");
+		wse.data = text;
+		// use the scheme to adjust the label.
+		let scheme = text.split(":")[0].toLowerCase();
+		let path = text.slice(text.indexOf(":")+1);
+		if( scheme === "send" ) {
+			wse.label = decodeURIComponent(path);
+		} else if ( scheme === "prompt") {
+			wse.label = decodeURIComponent(path) + " ...";
+		} else {
+			wse.label = `🌐${wse.data}`;
+		}
+		wse.onclick = () => { this.lociterm.osc8handler.sendLink(e,text,link) };
+		this.push(wse);
+	}
+
+	addSelection(e,selection) {
 
 		if(selection === "") return(false);
 
@@ -52,14 +112,14 @@ class WordStack {
 		}
 		if(selection === "") return(false);
 
-		let lastselection = this.stack[this.stack.length -1];
-		if(selection !== lastselection) {
-			this.stack.push(selection);
-			if(this.stack.length > this.atmost) {
-				this.stack = this.stack.slice(1);
-			}
-			this.updateMenu();
-		}
+		let wse = new WordStackEntry();
+		let enc = encodeURIComponent(selection);
+		wse.data = `prompt:${enc}`;
+		wse.label = `${selection.slice(0,20)} ...`;
+		wse.onclick = () => { this.lociterm.osc8handler.sendLink(e,wse.data,undefined) };
+
+		this.push(wse);
+
 		return(true);
 	}
 
@@ -113,12 +173,13 @@ class WordStack {
 		while( menudiv.children[0] !== undefined ) {
 			menudiv.children[0].remove();
 		}
-		for(let i=this.stack.length-1; i>=0 ;i--) {
+		for(let i=0; i<this.stack.length ;i++) {
 			let d = document.createElement('div');
 			d.classList.add('send');
 			d.classList.add('wordstack');
-			d.innerText = `${this.stack[i].slice(0,20)} ...`;
-			d.onclick = () =>  this.lociterm.menuhandler.send( `${this.stack[i]} `);
+			let wse = this.stack[i];
+			d.innerText = wse.label;
+			d.onclick = wse.onclick;
 			menudiv.appendChild(d);
 		}
 	}
