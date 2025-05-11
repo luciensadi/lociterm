@@ -398,9 +398,9 @@ class ClientMedia {
 
 		// Spec says to first stop playing everything that matches, except for
 		// this media if it is already going.
-		let halt = new Object;
+		let halt = new Object();
 		halt.priority = message.priority;
-		halt.key = message.tag;
+		halt.key = message.key;
 		this.stopMatchingMedia(halt,media);
 
 		if(this.enabled) {
