@@ -169,6 +169,19 @@ class LociPreferences {
 
 		}
 
+		// Apply the sfx preferences.
+		if(delta.sfx) {
+			if(delta.sfx.mcmpPlayAudio != undefined) {
+				this.lociterm.gmcp.mod("ClientMedia").enabled = delta.sfx.mcmpPlayAudio;
+				if(delta.sfx.mcmpPlayAudio == false) {
+					this.lociterm.gmcp.mod("ClientMedia").stop({});
+				}
+			}
+			if(delta.sfx.mcmpShowCaptions != undefined) {
+				this.lociterm.gmcp.mod("ClientMedia").cc = delta.sfx.mcmpShowCaptions;
+			}
+		}
+
 		// apply prefrences for the menu tree
 		if(delta.menu !== undefined) {
 			

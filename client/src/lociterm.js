@@ -167,9 +167,11 @@ class LociTerm {
 		// bah xtermjs removed the built in bell in 5.0.0
 		this.terminal.audio = new Audio(BellSound);
 		this.terminal.onBell(() => {
-			this.terminal.audio.play();
-			// This will shake an android phone!
-			navigator.vibrate([50,100,150]);
+			if(this.pref.get("sfx.terminalBell") == true) {
+				this.terminal.audio.play();
+				// This will shake an android phone!
+				navigator.vibrate([50,100,150]);
+			}
 		});
 
 		let rk;
@@ -651,8 +653,8 @@ class LociTerm {
 						this.doWindowResize();
 
 						// at least in LO, ctrl-r requests a redraw. 
-						this.paste("\x12");
-						//this.terminal.write(`\r\n┅┅┅┅┅ Reconnected. ┅┅┅┅┅\r\n\r\n`);
+						// this.paste("\x12");
+						// this.terminal.write(`\r\n┅┅┅┅┅ Reconnected. ┅┅┅┅┅\r\n\r\n`);
 
 					}
 					if(robj.msg && (robj.msg != "")) {

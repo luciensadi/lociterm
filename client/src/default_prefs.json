@@ -13,6 +13,11 @@
 		"bgridAnchor": "tr",
 		"menusideAnchor": "br"
 	},
+	"sfx": {
+		"terminalBell": true,
+		"mcmpPlayAudio": true,
+		"mcmpShowCaptions": false
+	},
 	"nerf": {
 		"enabled": false,
 		"chaining": false,
