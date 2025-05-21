@@ -25,7 +25,7 @@
 class LociMediaElement extends Audio {
 
 	// controls rate and direction of fade
-	#faderate = 0.0;
+	#faderate = undefined;
 	
 	// The number of msec between volume adjustments during a fade out/in
 	#fadedelay = 100;
@@ -51,7 +51,7 @@ class LociMediaElement extends Audio {
 			this.loops = this.mcmp.loops;
 		}
 		super.src = src;
-		let cb = (e) => {
+		let endcb = (e) => {
 			// console.log(`${this.caption} ended - ${this.#loops_left} of ${this.#loops_for}`);
 			if(this.#loops_for >= 1) {
 				this.#loops_left--;
@@ -65,7 +65,11 @@ class LociMediaElement extends Audio {
 				}
 			}
 		};
-		this.addEventListener("ended",cb);
+		this.addEventListener("ended",endcb);
+		let pausecb = (e) => { 
+			console.log(`${this.src} paused.`);
+		};
+		this.addEventListener("paused",pausecb);
 		return(this);
 	}
 
@@ -75,15 +79,40 @@ class LociMediaElement extends Audio {
 	};
 
 	play() {
-		this.showCaption(this,this.caption,"plays");
-		return(super.play());
+		if(this.mcmp.type.toLowerCase() == "video") {
+			console.log(`mcmp play: video not supported.`);
+			return(Promise.resolve());
+		}
+		this.#endfade();
+		return(
+			super.play()
+			.then(()=>{
+				if(this.mcmp.fadein > 0) {
+					this.fadein(this.mcmp.fadein);
+				} else {
+					this.showCaption(this,this.caption,"plays");
+				}
+			})
+			.catch((err)=>{console.log(`mcmp play: error ${err}`);})
+		);
 	}
 
 	pause() {
-		// show ending messages on long sound effects.
-		if((this.duration >= 5.0) || (this.#loops_for != 1)) {
-			this.showCaption(this,this.caption,"ends");
+		if(this.paused || this.ended) {
+			return(false);
 		}
+		if(this.mcmp.fadeout > 0) {
+			this.fadeout(this.mcmp.fadeout);
+		} else {
+			// show ending messages on long sound effects.
+			if((this.duration >= 5.0) || (this.#loops_for != 1)) {
+				this.showCaption(this,this.caption,"ends");
+			}
+			return(super.pause());
+		}
+	}
+
+	stop() {
 		return(super.pause());
 	}
 
@@ -142,53 +171,67 @@ class LociMediaElement extends Audio {
 
 	// implments the matching rules required by the mcmp stop method.
 	matches(message) {
-		if(message.name != undefined) {
-			if(this.mcmp.name == message.name) return(true);
+
+		let keys = [ "name", "tag", "key", "type" ];
+		let checks = 0;
+		let matches = 0;
+
+		for(let i=0;i<keys.length;i++) {
+			let key = keys[i];
+			if( message[key] != undefined ) {
+				checks++;
+				if(message[key] == this.mcmp[key]) {
+					matches++;
+				}
+			}
 		}
-		if(message.tag != undefined) {
-			if(this.mcmp.tag == message.tag) return(true);
-		}
-		if(message.type != undefined) {
-			if(this.mcmp.type == message.type) return(true);
-		}
+
 		if(message.priority != undefined) {
-			if(this.mcmp.priority <= message.priority) return(true);
+			checks++;
+			if(this.mcmp.priority < message.priority) {
+				matches++;
+			}
 		}
-		if(message.key != undefined) {
-			if(this.mcmp.key == message.key) return(true);
+
+		if((checks > 0) && (checks == matches)) {
+			return(true);
+		} else {
+			return(false);
 		}
-		return(false);
 	}
 
 	// linearly fade the stream to 0 volume over msec seconds.
-	fadeout(msec=5000) {
+	fadeout(msec=1000) {
 		if(msec == 0) {
-			this.#faderate = 0.0;
-			return;
+			msec = this.#fadedelay;
 		}
-		if(typeof(msec) != 'number') { msec = 5000; }
+		if(typeof(msec) != 'number') { msec = 1000; }
+		this.#endfade();
 		this.#faderate = -1.0 * this.volume / msec * this.#fadedelay;
 		this.showCaption(this,this.caption,"fades out");
+		//console.log(`fadeout: ${this.src} ${this.#faderate} ${this.volume}`);
 		this.#fader();
 	}
 
 	// linearly fade the stream to mcmp.volume over msec seconds.
-	fadein(msec=5000) {
+	fadein(msec=1000) {
 		if(msec == 0) {
-			this.#faderate = 0.0;
-			return;
+			msec = this.#fadedelay;
 		}
-		if(typeof(msec) != 'number') { msec=5000; }
+		if(typeof(msec) != 'number') { msec=1000; }
+		this.#endfade();
+		this.volume = 0.0;
 		let vol = ((this.mcmp.volume/100.0) || 1.0);
-		this.#faderate = vol / msec * this.#fadedelay;
+		this.#faderate = 1.0 * vol / msec * this.#fadedelay;
 		this.showCaption(this,this.caption,"fades in");
+		//console.log(`fadein: ${this.src} ${this.#faderate} ${this.volume}`);
 		this.#fader();
 	}
 
 	// recalls itself on a settimer to achieve the desired fade.
 	#fader() {
-		if(this.#faderate == 0.0) {
-			// Do not reschedule
+		if(this.#faderate == undefined) {
+			this.#endfade();
 			return;
 		}
 		let newvol = this.volume + this.#faderate;
@@ -202,11 +245,20 @@ class LociMediaElement extends Audio {
 		} else {
 			// target reached, if we were fading out, stop the playback.
 			if(this.#faderate < 0) {
-				this.#faderate = 0.0;
-				this.pause();
+				this.#endfade();
+				super.pause();
 			}
 		}
 	}
+
+	#endfade() {
+		if(this.#fadeid > 0) {
+			clearTimeout(this.#fadeid);
+			this.#fadeid = 0;
+			this.#faderate = undefined;
+		}
+	}
+		
 
 }
 
@@ -255,7 +307,10 @@ class ClientMedia {
 		// will be called on reciept of core.goodbye. Can be used to clean up
 		// any held state.
 		this.mediaObjs.forEach( (media,src) => {
-			media.pause();
+			if(!(media.paused || media.ended) ) {
+				media.pause(); // hard stop, right now.
+				media.stop(); // hard stop, right now.
+			}
 		});
 	}
 
@@ -378,8 +433,10 @@ class ClientMedia {
 		// import any directives from the message into the object.
 		if(message.volume) {
 			media.volume = 1.0 * message.volume / 100.0;
+		} else {
+			media.volume = 0.5;
 		}
-		if(message["continue"] === false) {
+		if(message["continue"] == "false") {
 			media.currentTime = 0.0;
 		}
 		if(message.loops == -1) {
@@ -392,15 +449,15 @@ class ClientMedia {
 			media.currentTime = message.start;
 		}
 		if(message.finish !== undefined && typeof(message.finish) === "number") {
-			// Currently unhandled.  Audio() doesn't have a straightforeward way to
-			// control it?
+			media.duration = media.currentTime + (message.finish / 1000);
 		}
 
 		// Spec says to first stop playing everything that matches, except for
 		// this media if it is already going.
 		let halt = new Object();
-		halt.priority = message.priority;
-		halt.key = message.key;
+		if(message.key != undefined) halt.key = message.key;
+		if(message.priority != undefined) halt.priority = message.priority;
+		if(message.type != undefined) halt.type = message.type;
 		this.stopMatchingMedia(halt,media);
 
 		if(this.enabled) {
@@ -410,20 +467,8 @@ class ClientMedia {
 		}
 
 		// Then trigger this media to play, if it isn't already doing so.
-		if( (media.paused || media.ended)
-		) {
-			media.fading = false;
-			media.volume = ((media.mcmp.volume/100.0) || 1.0);
-
-			media.play()
-			.then(()=>{
-				if(media.mcmp.fadein > 0) {
-					media.volume = 0.0;
-					media.fadein(media.mcmp.fadein);
-				} 
-			})
-			.catch((err)=>{console.log(`mcmp play: error ${err}`);})
-		}
+		media.volume = ((media.mcmp.volume/100.0) || 1.0);
+		media.play();
 	}
 
 	// Client.Media.Stop message format
@@ -469,11 +514,11 @@ class ClientMedia {
 	// for itself.)
 	stopMatchingMedia(message,exceptfor=undefined) {
 		// Stop playing everything that matches.
+		let hardstop = (Object.keys(message).length == 0);
 		this.mediaObjs.forEach( (media,src) => {
-			if(media == exceptfor) {
+			if( (media == exceptfor) && (message["continue"] == "true")) {
 				return;
 			}
-			let hardstop = (Object.keys(message).length == 0);
 			if( (hardstop || media.matches(message)) && 
 				(media.ended != true) &&
 				(media.paused != true)

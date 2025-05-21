@@ -93,7 +93,7 @@ the same system as the game, on your web server, or elsewhere 'in the cloud'.
 - End-to-end Compression- Websocket Per-Message Compression for client to server, MUD Client Compression Protocol for server to game
 - Standard Supported Telnet Options- TTYPE, EOR, NAWS, ECHO, SGA, NEW-ENVIRON, Old Line Mode, Character-at-a-Time Mode
 - MUD Telnet Options- MCCP2, MTTS, MSSP, GMCP
-- GMCP Support for Char.Login, Loci.Hotkey and Loci.Menu
+- GMCP Support for Char.Login, Loci.Hotkey, Loci.Menu, Client.Media
 - Terminal support for UTF-8, Emoji, ANSI Color/256/Truecolor, fully XTERM VT compatible, Mouse tracking,  SIXEL and IIP inline graphics display.
 - About Game shows server MSSP data, including Icon, location, contact info and web links.
 - Local function key editor and function key menu.

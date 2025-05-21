@@ -1,5 +1,13 @@
 ## What's New
 
+### Version 2.5.2
+
+- Tweaks and bugfixes for GMCP Client.Media sound and music.
+
+### Version 2.5.0
+
+- Added support for GMCP Client.Media sound and music.
+
 ### Version 2.4.0
 
 - bugfix to keep the line mode password from echoing
