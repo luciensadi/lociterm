@@ -103,7 +103,7 @@ void locid_log(char *str, ...)
 }
 
 int locid_ssl_err_cb(const char *str, size_t len, void *u) {
-	locid_log("%s: %.*s",(char *)u,len-1,str);
+	locid_log("%s: %.*s", (char *)u, (int)(len-1), str);
 	return(0);
 }
 
