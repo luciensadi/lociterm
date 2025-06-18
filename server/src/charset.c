@@ -106,12 +106,22 @@ void loci_charset_send_request(proxy_conn_t *pc) {
 
 	*b++ = CHARSET_REQUEST;
 	/* add the preferred charset first. */
-	b += g_snprintf(b,eob-b," %s",charset);
+	int n = g_snprintf(b, eob - b, " %s", charset);
+	if (n < 0 || n >= eob - b) {
+		locid_debug(DEBUG_TELNET, pc, "Buffer overflow prevented while adding preferred charset.");
+		return;
+	}
+	b += n;
 
-	for(int i=0;charset_supported[i]!=NULL;i++) {
+	for (int i = 0; charset_supported[i] != NULL; i++) {
 		/* add the supported charsets next. */
-		if(strcmp(charset,charset_supported[i])) {
-			b += g_snprintf(b,eob-b," %s",charset_supported[i]);
+		if (strcmp(charset, charset_supported[i])) {
+			n = g_snprintf(b, eob - b, " %s", charset_supported[i]);
+			if (n < 0 || n >= eob - b) {
+				locid_debug(DEBUG_TELNET, pc, "Buffer overflow prevented while adding supported charset.");
+				return;
+			}
+			b += n;
 		}
 	}
 
