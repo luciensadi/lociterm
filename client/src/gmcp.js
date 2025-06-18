@@ -27,6 +27,7 @@ import PackageData from '../package.json';
 import { LociHotkey } from './gmcp/loci_hotkey.js';
 import { LociMenu } from './gmcp/loci_menu.js';
 import { CharLogin } from './gmcp/char_login.js';
+import { ClientMedia } from './gmcp/mcmp.js';
 
 class GMCP {
 
@@ -49,6 +50,7 @@ class GMCP {
 		this.initModule(new CharLogin(this));
 		this.initModule(new LociHotkey(this));
 		this.initModule(new LociMenu(this));
+		this.initModule(new ClientMedia(this));
 	
 		this.inlineDebug = false;
 	}

@@ -204,6 +204,16 @@ void loci_environment_init(proxy_conn_t *pc) {
 	pc->environment = g_list_append(pc->environment,
 		loci_new_env_var(TELNET_ENVIRON_VAR,"COLORTERM","truecolor")
 	);
+	/* some mudlet-ism's that some game servers look for. */
+	pc->environment = g_list_append(pc->environment,
+		loci_new_env_var(TELNET_ENVIRON_VAR,"TRUECOLOR","1")
+	);
+	pc->environment = g_list_append(pc->environment,
+		loci_new_env_var(TELNET_ENVIRON_VAR,"256_COLORS","1")
+	);
+	pc->environment = g_list_append(pc->environment,
+		loci_new_env_var(TELNET_ENVIRON_VAR,"ANSI","1")
+	);
 
 	if(pc->client) {
 		if(pc->client->useragent) {

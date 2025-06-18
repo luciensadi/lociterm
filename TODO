@@ -13,8 +13,6 @@
 
 * [requested] pref for scrollback length.
 
-* GMCP - enable/disable per protocol module, and a pref selector?
-
 * nerfbar should probably react to actual function hotkey presses too.
 
 * ICK. - the nerfbar password hider probably needs to be an <input
@@ -77,6 +75,14 @@
 * Server drop perms after launch?
 
 ------------- DONE! -----------------
++ get loops working in mcmp
+
++ GMCP - enable/disable per protocol module, and a pref selector?
+
++ make a pref to enable/disable mcmp
+
++ make a pref to enable/disable mcmp cc
+
 + Add an About->Conennection window, to show connection time, i/o stats, and
   maybe operating parameters like telnet and gmcp negotiations.
 

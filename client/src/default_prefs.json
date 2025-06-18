@@ -13,6 +13,11 @@
 		"bgridAnchor": "tr",
 		"menusideAnchor": "br"
 	},
+	"sfx": {
+		"terminalBell": true,
+		"mcmpPlayAudio": true,
+		"mcmpShowCaptions": false
+	},
 	"nerf": {
 		"enabled": false,
 		"chaining": false,
@@ -50,7 +55,8 @@
 	},
 	"lociterm": {
 		"bsSendsDel": true,
-		"encoding": "utf-8"
+		"encoding": "utf-8",
+		"linksOpenImmediately": false
 	},
 	"xtermoptions": {
 		"drawBoldTextInBrightColors": true,

@@ -901,6 +901,42 @@ class MenuHandler {
 			})
 		);
 		deets.appendChild(l);
+
+		deets = this.create_generic_details("Sound Effects",menuname);
+		box.appendChild(deets);
+
+		// terminalBell
+		l = this.create_generic_checkbox(
+			`${menuname}_terminalBell`,
+			"Ring Terminal Bell",
+			this.lociterm.pref.get("sfx.terminalBell"),
+			((e)=>{
+				this.lociterm.pref.set("sfx.terminalBell",e.srcElement.checked);
+			})
+		);
+		deets.appendChild(l);
+
+		// mcmp global mute
+		l = this.create_generic_checkbox(
+			`${menuname}_mcmpPlayAudio`,
+			"Play MCMP Audio",
+			this.lociterm.pref.get("sfx.mcmpPlayAudio"),
+			((e)=>{
+				this.lociterm.pref.set("sfx.mcmpPlayAudio",e.srcElement.checked);
+			})
+		);
+		deets.appendChild(l);
+
+		// mcmp captions
+		l = this.create_generic_checkbox(
+			`${menuname}_mcmpShowCaptions`,
+			"Show MCMP Captions",
+			this.lociterm.pref.get("sfx.mcmpShowCaptions"),
+			((e)=>{
+				this.lociterm.pref.set("sfx.mcmpShowCaptions",e.srcElement.checked);
+			})
+		);
+		deets.appendChild(l);
 		
 		deets = this.create_generic_details("Menu Layout",menuname);
 		box.appendChild(deets);
@@ -1116,6 +1152,18 @@ class MenuHandler {
 		// the input is is children[0] of the generic checkbox.
 		win.appendChild(l);
 
+		// linksOpenImmediately
+		l = this.create_generic_checkbox(
+			`${menuname}_linksOpenImmediately`,
+			"Single click links",
+			this.lociterm.pref.get("lociterm.linksOpenImmediately"),
+			((e)=>{
+				this.lociterm.pref.set("lociterm.linksOpenImmediately",e.srcElement.checked);
+			})
+		);
+		// the input is is children[0] of the generic checkbox.
+		win.appendChild(l);
+
 		// fontWeightBold - It doesn't really make much visual difference, so I turned it off.
 		//l = this.create_generic_checkbox(
 		//	`${menuname}_fontWeightBold`,
@@ -1280,7 +1328,7 @@ class MenuHandler {
 
 		l = document.createElement('p');
 		cdiv.appendChild(l);
-		l.innerText = "Thank you to the Multi User Dungeon #coding discord group for your help and encouragement, Nicky N. for help with the CRT Filters, and to every member of the Last Outpost Honor Guard! "
+		l.innerText = "Thank you to the Multi User Dungeon #coding discord group for your help and encouragement, Nicky N. for help with the CRT Filters, Tamarindo of StickMUD for help with MCMP, and to every member of the Last Outpost Honor Guard! "
 
 		divstack.pop(); //imgcontainer
 		cdiv = divstack[divstack.length-1];

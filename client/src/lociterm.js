@@ -41,6 +41,7 @@ import { HotkeyHandler } from './hotkey.js';
 import { CpDecoder } from './cpdecoder.js';
 import * as ObjDeep from './objdeep.js';
 import { LociPreferences } from './lociprefs.js';
+import { OSC8Handler } from './osc8handler.js';
 
 // The command codes MUST MATCH the defines in server/client.h !
 const Command = {
@@ -122,7 +123,6 @@ class LociTerm {
 		this.sendq = [];
 		this.resizeTimeout = undefined;
 		this.lastResize = "";
-		this.webLinksAddon = new WebLinksAddon();
 		this.login = { requested: 0, name: "", password: "", remember: 1 };
 		this.socket = undefined;
 		this.reconnect_key = "";
@@ -138,7 +138,6 @@ class LociTerm {
 		this.terminal.loadAddon(this.unicode11Addon);
 		this.terminal.unicode.activeVersion = '11';
 		this.terminal.loadAddon(this.fitAddon);
-		this.terminal.loadAddon(this.webLinksAddon);
 		this.terminal.options.convertEol = true;
 
 		this.webgladdon = new WebglAddon();
@@ -155,6 +154,11 @@ class LociTerm {
 		this.terminal.loadAddon(this.serializeaddon);
 		this.serializeInit(mydiv.id);
 
+		// Implicit web link stuff.
+		this.webLinksAddon = new WebLinksAddon();
+		this.terminal.loadAddon(this.webLinksAddon);
+
+
 		this.terminal.onKey((e) => this.onKey(e) );
 		this.terminal.onData((e) => this.onTerminalData(e) );
 		this.terminal.onBinary((e) => this.onBinaryData(e) );
@@ -163,9 +167,11 @@ class LociTerm {
 		// bah xtermjs removed the built in bell in 5.0.0
 		this.terminal.audio = new Audio(BellSound);
 		this.terminal.onBell(() => {
-			this.terminal.audio.play();
-			// This will shake an android phone!
-			navigator.vibrate([50,100,150]);
+			if(this.pref.get("sfx.terminalBell") == true) {
+				this.terminal.audio.play();
+				// This will shake an android phone!
+				navigator.vibrate([50,100,150]);
+			}
 		});
 
 		let rk;
@@ -187,6 +193,10 @@ class LociTerm {
 		this.wordstack.menuid = "sys_wordstack";
 		this.hotkey = new HotkeyHandler(this);
 		this.menuhandler = new MenuHandler(this);
+
+		// OSC8 link handler stuff.
+		this.osc8handler = new OSC8Handler(this);
+		this.terminal.options.linkHandler = this.osc8handler.linkHandler();
 
 		this.gaeor = new GaEorHandler(this);
 		// ...for example... 
@@ -421,9 +431,9 @@ class LociTerm {
 		this.sendMsg(Command.TERM_DATA,data);
 	}
 
-	onSelectionChange(data) {
+	onSelectionChange(e) {
 		let selection = this.terminal.getSelection();
-		if (this.wordstack.addSelection(selection) === true) {
+		if (this.wordstack.addSelection(e,selection) === true) {
 			this.wordstack.openMenu();
 		} else {
 			this.wordstack.closeMenu();
@@ -643,8 +653,8 @@ class LociTerm {
 						this.doWindowResize();
 
 						// at least in LO, ctrl-r requests a redraw. 
-						this.paste("\x12");
-						//this.terminal.write(`\r\n┅┅┅┅┅ Reconnected. ┅┅┅┅┅\r\n\r\n`);
+						// this.paste("\x12");
+						// this.terminal.write(`\r\n┅┅┅┅┅ Reconnected. ┅┅┅┅┅\r\n\r\n`);
 
 					}
 					if(robj.msg && (robj.msg != "")) {
